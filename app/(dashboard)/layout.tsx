@@ -1,0 +1,47 @@
+'use client';
+
+import { useEffect, type ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuthStore } from '@/store/auth-store';
+import { Sidebar } from '@/components/layout/Sidebar';
+import { Header } from '@/components/layout/Header';
+
+/**
+ * Authenticated shell: sidebar + header + content. Guards auth on the client as
+ * a second line of defence behind the edge middleware.
+ */
+export default function DashboardLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const router = useRouter();
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const user = useAuthStore((s) => s.user);
+
+  const isAuthenticated = Boolean(accessToken && user);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace('/login');
+    }
+  }, [isAuthenticated, router]);
+
+  if (!isAuthenticated) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-background">
+        <span className="spin big" aria-label="Yüklənir" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-screen bg-background">
+      <Sidebar />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <Header />
+        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+      </div>
+    </div>
+  );
+}

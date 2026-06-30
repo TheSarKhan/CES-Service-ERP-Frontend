@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Theme tokens mapped to the CES ERP UI Kit palette (see styles/ui-kit.css).
+ * The kit defines its own --graphite/--gold/etc. variables; here we additionally
+ * expose Tailwind-facing tokens so utilities like bg-background / text-foreground
+ * resolve to the kit surfaces. Values are raw colors (not HSL triplets) and the
+ * Tailwind config references them directly via var().
+ */
+@layer base {
+  :root {
+    --background: #f7f5f1; /* kit --bg */
+    --surface: #ffffff; /* kit --surface */
+    --foreground: #1a1a1a; /* kit --ink */
+    --card: #ffffff;
+    --card-foreground: #1a1a1a;
+    --popover: #ffffff;
+    --popover-foreground: #1a1a1a;
+
+    --primary: #3a3a3a; /* graphite */
+    --primary-foreground: #ffffff;
+    --accent: #c8932a; /* gold */
+    --accent-foreground: #ffffff;
+    --secondary: #f4f4f4; /* graphite-50 */
+    --secondary-foreground: #3a3a3a;
+
+    --muted: #f4f4f4;
+    --muted-foreground: #6b6b6b;
+
+    --destructive: #d4385a; /* danger */
+    --destructive-foreground: #ffffff;
+
+    --border: #e6e6e6; /* line */
+    --input: #e6e6e6;
+    --ring: #c8932a; /* gold focus ring */
+
+    --radius: 14px;
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /*
+   * The kit sets `body{min-width:1440px}` for its static showcase. The real app
+   * must be responsive, so we neutralise it here (globals.css is imported after
+   * the kit in app/layout.tsx).
+   */
+  html,
+  body {
+    min-width: 0;
+  }
+}
