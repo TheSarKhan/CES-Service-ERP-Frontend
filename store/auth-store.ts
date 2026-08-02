@@ -27,6 +27,9 @@ export interface AuthState {
   refreshToken: string | null;
   user: User | null;
   activeBranchId: string | null;
+  /** False until the persisted state has been read back from localStorage. */
+  hasHydrated: boolean;
+  setHasHydrated: (hasHydrated: boolean) => void;
 
   /** True once an access token + user are present. */
   isAuthenticated: () => boolean;
@@ -52,6 +55,8 @@ export const useAuthStore = create<AuthState>()(
       refreshToken: null,
       user: null,
       activeBranchId: null,
+      hasHydrated: false,
+      setHasHydrated: (hasHydrated) => set({ hasHydrated }),
 
       isAuthenticated: () => Boolean(get().accessToken && get().user),
 
@@ -120,6 +125,9 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         activeBranchId: state.activeBranchId,
       }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     },
   ),
 );

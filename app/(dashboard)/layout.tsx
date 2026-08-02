@@ -18,16 +18,17 @@ export default function DashboardLayout({
   const router = useRouter();
   const accessToken = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
+  const hasHydrated = useAuthStore((s) => s.hasHydrated);
 
   const isAuthenticated = Boolean(accessToken && user);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (hasHydrated && !isAuthenticated) {
       router.replace('/login');
     }
-  }, [isAuthenticated, router]);
+  }, [hasHydrated, isAuthenticated, router]);
 
-  if (!isAuthenticated) {
+  if (!hasHydrated || !isAuthenticated) {
     return (
       <div className="grid min-h-screen place-items-center bg-background">
         <span className="spin big" aria-label="Yüklənir" />
