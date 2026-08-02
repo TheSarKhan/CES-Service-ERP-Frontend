@@ -1,0 +1,194 @@
+/**
+ * Inventory (Stok İdarəetməsi) domain types — matched to the backend's inventory module DTOs
+ * (plain camelCase JSON, same convention as the RBAC module).
+ */
+
+export type InventoryFieldType = 'TEXT' | 'TEXTAREA' | 'NUMBER' | 'DATE' | 'IMAGE' | 'MULTI_IMAGE';
+
+export type InventoryUnitStatus = 'IN_STOCK' | 'IN_USE' | 'FAILED' | 'DISPOSED' | 'RETURNED';
+
+export type WarrantyStatus = 'NONE' | 'ACTIVE' | 'EXPIRING_SOON' | 'EXPIRED';
+
+/** A single node in the dynamic physical storage tree (Layer). */
+export interface InventoryNode {
+  id: string;
+  branchId: string;
+  parentId: string | null;
+  name: string;
+  code: string | null;
+  qrCode: string | null;
+  barcode: string | null;
+  isActive: boolean;
+  notes: string | null;
+  hasChildren: boolean;
+  /** Categories allowed at this node; empty = unrestricted (any category may be used here). */
+  categoryIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InventoryNodeRequest {
+  name: string;
+  code?: string | null;
+  parentId?: string | null;
+  notes?: string | null;
+  isActive?: boolean;
+  /** Omit to leave unchanged; empty array clears the restriction; non-empty replaces it. */
+  categoryIds?: string[];
+}
+
+/** A single dynamic category field definition. */
+export interface InventoryCategoryField {
+  id: string;
+  categoryId: string;
+  fieldKey: string;
+  label: string;
+  fieldType: InventoryFieldType;
+  isRequired: boolean;
+  defaultValue: string | null;
+  placeholder: string | null;
+  validationRegex: string | null;
+  sortOrder: number;
+  isVisible: boolean;
+  /** Whether this field gets its own column in the leaf-node item table. */
+  showInTable: boolean;
+}
+
+export interface InventoryCategoryFieldRequest {
+  fieldKey: string;
+  label: string;
+  fieldType: InventoryFieldType;
+  isRequired?: boolean;
+  defaultValue?: string | null;
+  placeholder?: string | null;
+  validationRegex?: string | null;
+  sortOrder?: number;
+  isVisible?: boolean;
+  showInTable?: boolean;
+}
+
+/** A product category (Elektronika / Mebel / Kimyəvi maddələr ...). */
+export interface InventoryCategory {
+  id: string;
+  branchId: string;
+  name: string;
+  defaultUnit: string;
+  isActive: boolean;
+  fields: InventoryCategoryField[] | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InventoryCategoryRequest {
+  name: string;
+  defaultUnit: string;
+  isActive?: boolean;
+  fields?: InventoryCategoryFieldRequest[];
+}
+
+/** A product. */
+export interface InventoryItem {
+  id: string;
+  branchId: string;
+  nodeId: string;
+  categoryId: string;
+  name: string;
+  sku: string;
+  barcode: string | null;
+  qrCode: string | null;
+  unit: string;
+  quantity: number;
+  purchasePrice: number;
+  isSerialized: boolean;
+  attributes: Record<string, unknown>;
+  notes: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InventoryItemRequest {
+  nodeId: string;
+  categoryId: string;
+  name: string;
+  sku: string;
+  barcode: string;
+  unit: string;
+  quantity: number;
+  purchasePrice: number;
+  isSerialized?: boolean;
+  attributes?: Record<string, unknown>;
+  notes?: string | null;
+  isActive?: boolean;
+}
+
+export interface StockQuantityRequest {
+  quantity: number;
+  reason?: string;
+}
+
+/** A single serialized, warranty-tracked physical unit of an item. */
+export interface InventoryItemUnit {
+  id: string;
+  branchId: string;
+  itemId: string;
+  itemName: string | null;
+  itemSku: string | null;
+  nodeId: string;
+  serialNumber: string;
+  qrCode: string | null;
+  barcode: string | null;
+  status: InventoryUnitStatus;
+  purchaseDate: string;
+  warrantyStartDate: string | null;
+  warrantyEndDate: string | null;
+  warrantyStatus: WarrantyStatus;
+  failedAt: string | null;
+  failureNotes: string | null;
+  usedInWorkOrderId: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InventoryItemUnitBatchCreateRequest {
+  serialNumbers: string[];
+  nodeId?: string | null;
+  purchaseDate?: string | null;
+  warrantyStartDate?: string | null;
+  warrantyEndDate?: string | null;
+  notes?: string | null;
+}
+
+export interface InventoryItemUnitUpdateRequest {
+  status?: InventoryUnitStatus;
+  nodeId?: string;
+  warrantyStartDate?: string | null;
+  warrantyEndDate?: string | null;
+  notes?: string | null;
+}
+
+export interface InventoryLookupResult {
+  type: 'NODE' | 'ITEM' | 'ITEM_UNIT';
+  id: string;
+}
+
+export interface InventoryItemListParams {
+  categoryId?: string;
+  nodeId?: string;
+  search?: string;
+  page?: number;
+  size?: number;
+  sort?: string;
+  dir?: 'asc' | 'desc';
+}
+
+export interface InventoryUnitSearchParams {
+  itemId?: string;
+  status?: InventoryUnitStatus;
+  search?: string;
+  page?: number;
+  size?: number;
+  sort?: string;
+  dir?: 'asc' | 'desc';
+}

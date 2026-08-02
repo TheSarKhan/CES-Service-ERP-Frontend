@@ -160,6 +160,22 @@ export async function apiPost<T>(url: string, body?: unknown): Promise<T> {
   }
 }
 
+/**
+ * POST a `FormData` body (file upload). The instance sets a default JSON `Content-Type`, which
+ * would otherwise override axios's automatic multipart boundary — clearing it here lets the
+ * browser set the correct `multipart/form-data; boundary=...` header itself.
+ */
+export async function apiPostForm<T>(url: string, formData: FormData): Promise<T> {
+  try {
+    const res = await httpClient.post<ApiResponse<T>>(url, formData, {
+      headers: { 'Content-Type': undefined },
+    });
+    return res.data.data;
+  } catch (error) {
+    toApiError(error);
+  }
+}
+
 /** PUT that unwraps the response payload. */
 export async function apiPut<T>(url: string, body?: unknown): Promise<T> {
   try {
