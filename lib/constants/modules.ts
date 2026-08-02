@@ -34,6 +34,12 @@ export interface NavModule {
    * visible to any authenticated user (e.g. Dashboard).
    */
   permission: string | null;
+  /**
+   * Whether the route has real content yet, vs. still being a
+   * `ModulePlaceholder` stub. Unbuilt modules render locked (non-navigable)
+   * in the sidebar instead of linking to an empty page.
+   */
+  built?: boolean;
 }
 
 /** A labelled group of navigation entries. */
@@ -57,6 +63,7 @@ export const NAV_GROUPS: NavGroup[] = [
         href: '/',
         icon: LayoutDashboard,
         permission: null,
+        built: true,
       },
     ],
   },
@@ -69,6 +76,7 @@ export const NAV_GROUPS: NavGroup[] = [
         href: '/vehicles',
         icon: Truck,
         permission: 'VEHICLE_READ',
+        built: true,
       },
       {
         key: 'M04_CUSTOMERS',
@@ -97,6 +105,7 @@ export const NAV_GROUPS: NavGroup[] = [
         href: '/warehouse',
         icon: Warehouse,
         permission: 'WH_READ',
+        built: true,
       },
       {
         key: 'M18_INSPECTIONS',
@@ -170,6 +179,7 @@ export const NAV_GROUPS: NavGroup[] = [
         href: '/roles',
         icon: ShieldCheck,
         permission: 'ROLE_READ',
+        built: true,
       },
       {
         key: 'M17_AUDIT',
