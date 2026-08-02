@@ -8,6 +8,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'ces.sarkhan.online',
       },
+      {
+        protocol: 'https',
+        hostname: 'service.sarkhan.az',
+      },
     ],
   },
 };
