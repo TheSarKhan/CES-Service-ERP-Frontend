@@ -21,11 +21,11 @@ import { DynamicFieldInput } from '@/components/inventory/DynamicFieldInput';
 import {
   useCreateInventoryItem,
   useInventoryCategories,
-  useInventoryNode,
   useUpdateInventoryItem,
 } from '@/hooks/use-inventory';
 import { ApiRequestError } from '@/lib/api/client';
 import { UNIT_OPTIONS } from '@/lib/constants/units';
+import { ApprovalSubmittedDialog } from '@/components/approval/ApprovalSubmittedDialog';
 import type { InventoryItem } from '@/types/inventory';
 
 const itemFormSchema = z.object({
@@ -60,28 +60,20 @@ export function ItemFormDialog({
   initialCategoryId,
 }: ItemFormDialogProps) {
   const [serverError, setServerError] = useState<string | null>(null);
+  const [approvalSent, setApprovalSent] = useState(false);
   const [attributes, setAttributes] = useState<Record<string, unknown>>({});
   const [attributeErrors, setAttributeErrors] = useState<string[]>([]);
   const isEditing = Boolean(editingItem);
 
   const { data: categories } = useInventoryCategories();
-  const { data: node } = useInventoryNode(nodeId);
   const createItem = useCreateInventoryItem();
   const updateItem = useUpdateInventoryItem();
-
-  const availableCategories = useMemo(() => {
-    if (!categories) return [];
-    const nodeCategoryIds = node?.categoryIds ?? [];
-    if (nodeCategoryIds.length === 0) return categories;
-    return categories.filter((c) => nodeCategoryIds.includes(c.id));
-  }, [categories, node]);
 
   const {
     register,
     handleSubmit,
     watch,
     reset,
-    setValue,
     formState: { errors, isSubmitting },
   } = useForm<ItemFormValues>({
     resolver: zodResolver(itemFormSchema),
@@ -144,15 +136,6 @@ export function ItemFormDialog({
     }
   }, [open, editingItem, initialCategoryId, categories, reset]);
 
-  function handleCategoryChange(categoryId: string) {
-    const category = categories?.find((c) => c.id === categoryId);
-    setAttributes({});
-    if (category?.defaultUnit) {
-      setValue('unit', category.defaultUnit);
-    }
-    return category;
-  }
-
   const onSubmit = async (values: ItemFormValues) => {
     setServerError(null);
 
@@ -181,14 +164,20 @@ export function ItemFormDialog({
 
     try {
       if (isEditing) {
+        // Deferred: the edit is parked for approval, so the form closes onto a confirmation
+        // rather than an updated record.
         await updateItem.mutateAsync({ id: editingItem!.id, body });
-      } else {
-        await createItem.mutateAsync(body);
+        onOpenChange(false);
+        setApprovalSent(true);
+        return;
       }
+      await createItem.mutateAsync(body);
       onOpenChange(false);
     } catch (error) {
       if (error instanceof ApiRequestError && error.code === 'DUPLICATE_SKU') {
         setServerError('Bu SKU artıq mövcuddur.');
+      } else if (error instanceof ApiRequestError && error.code === 'ENTITY_PENDING_APPROVAL') {
+        setServerError('Bu məhsulun təsdiq gözləyən dəyişikliyi var — əvvəlcə o qərara alınmalıdır.');
       } else if (error instanceof ApiRequestError && error.code === 'NODE_CATEGORY_NOT_ALLOWED') {
         setServerError('Seçilmiş kateqoriya bu node üçün icazəli deyil.');
       } else {
@@ -198,6 +187,7 @@ export function ItemFormDialog({
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
@@ -225,34 +215,13 @@ export function ItemFormDialog({
               <Label htmlFor="item-category" required>
                 Kateqoriya
               </Label>
-              {isEditing ? (
-                <>
-                  <select
-                    id="item-category"
-                    className="h-11 w-full rounded-[11px] border border-line bg-white px-3 text-sm"
-                    {...register('categoryId', { onChange: (e) => handleCategoryChange(e.target.value) })}
-                  >
-                    <option value="">— seçin —</option>
-                    {availableCategories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                  {node && (node.categoryIds ?? []).length > 0 && (
-                    <p className="mt-1.5 text-xs text-muted-foreground">
-                      Bu node üçün icazəli kateqoriyalarla məhdudlaşdırılıb.
-                    </p>
-                  )}
-                </>
-              ) : (
-                <>
-                  <input type="hidden" {...register('categoryId')} />
-                  <div className="flex h-11 items-center rounded-[11px] border border-line bg-graphite-50 px-3 text-sm font-semibold">
-                    {selectedCategory?.name ?? '—'}
-                  </div>
-                </>
-              )}
+              {/* Fixed permanently — including while editing — so an item can never end up
+                  listed under a category section it doesn't actually belong to. Recategorizing
+                  a product means creating it fresh under the right category, not relabeling it. */}
+              <input type="hidden" {...register('categoryId')} />
+              <div className="flex h-11 items-center rounded-[11px] border border-line bg-graphite-50 px-3 text-sm font-semibold">
+                {selectedCategory?.name ?? '—'}
+              </div>
               {errors.categoryId && <FieldError>{errors.categoryId.message}</FieldError>}
             </Field>
             <Field>
@@ -361,5 +330,11 @@ export function ItemFormDialog({
         </form>
       </DialogContent>
     </Dialog>
+    <ApprovalSubmittedDialog
+      open={approvalSent}
+      onOpenChange={setApprovalSent}
+      description="Məhsul redaktəsi"
+    />
+    </>
   );
 }

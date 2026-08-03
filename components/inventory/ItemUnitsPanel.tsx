@@ -18,6 +18,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { UnitStatusBadge, WarrantyStatusBadge } from '@/components/inventory/badges';
+import { formatDate } from '@/lib/utils/format';
 import { UnitBatchRegisterDialog } from '@/components/inventory/UnitBatchRegisterDialog';
 import { QrCodeDialog } from '@/components/inventory/QrCodeDialog';
 import type { InventoryItem, InventoryItemUnit } from '@/types/inventory';
@@ -68,7 +69,9 @@ export function ItemUnitsPanel({ item }: { item: InventoryItem }) {
               <UnitStatusBadge status={unit.status} />
               <WarrantyStatusBadge status={unit.warrantyStatus} />
               {unit.warrantyEndDate && (
-                <span className="text-xs text-muted-foreground">zəmanət bitmə: {unit.warrantyEndDate}</span>
+                <span className="text-xs text-muted-foreground">
+                  zəmanət bitmə: {formatDate(unit.warrantyEndDate)}
+                </span>
               )}
               <div className="ml-auto flex items-center gap-1">
                 <button

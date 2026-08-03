@@ -1,7 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowDownCircle, ArrowUpCircle, ListChecks, Move, Pencil, QrCode, Trash2 } from 'lucide-react';
+import {
+  ArrowDownCircle,
+  ArrowUpCircle,
+  ChevronRight,
+  ListChecks,
+  Move,
+  Pencil,
+  QrCode,
+  Trash2,
+} from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -11,19 +20,42 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
-import { useDeleteInventoryItem, useInventoryCategories, useInventoryItem } from '@/hooks/use-inventory';
+import {
+  useDeleteInventoryItem,
+  useInventoryCategories,
+  useInventoryItem,
+  useInventoryNodePath,
+} from '@/hooks/use-inventory';
 import { ApiRequestError } from '@/lib/api/client';
+import { formatDateTime, formatMoney } from '@/lib/utils/format';
 import { ItemFormDialog } from '@/components/inventory/ItemFormDialog';
 import { MoveItemDialog } from '@/components/inventory/MoveItemDialog';
 import { StockOperationDialog } from '@/components/inventory/StockOperationDialog';
 import { ItemUnitsPanel } from '@/components/inventory/ItemUnitsPanel';
 import { QrCodeDialog } from '@/components/inventory/QrCodeDialog';
-import type { InventoryItem } from '@/types/inventory';
+import { renderAttributeValue } from '@/components/inventory/AttributeValue';
+import { ApprovalSubmittedDialog } from '@/components/approval/ApprovalSubmittedDialog';
+import type { InventoryFieldType } from '@/types/inventory';
 
 export interface ItemDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   itemId: string | null;
+}
+
+/** One label/value pair in the detail grid. */
+function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="mt-0.5 text-sm font-semibold">{children}</div>
+    </div>
+  );
+}
+
+/** Wide field types get the full row — a paragraph or a strip of photos in a half column reads badly. */
+function isWideField(fieldType: InventoryFieldType): boolean {
+  return fieldType === 'TEXTAREA' || fieldType === 'IMAGE' || fieldType === 'MULTI_IMAGE';
 }
 
 export function ItemDetailDialog({ open, onOpenChange, itemId }: ItemDetailDialogProps) {
@@ -35,20 +67,29 @@ export function ItemDetailDialog({ open, onOpenChange, itemId }: ItemDetailDialo
   const [qrOpen, setQrOpen] = useState(false);
   const [stockKind, setStockKind] = useState<'in' | 'out' | 'adjust' | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [approvalSent, setApprovalSent] = useState(false);
+
+  // Hook order must stay stable, so this runs before the early return — it self-disables on null.
+  const { data: nodePath } = useInventoryNodePath(item?.nodeId ?? null, open && Boolean(item));
 
   if (!item) return null;
   const category = categories?.find((c) => c.id === item.categoryId);
+  const fields = (category?.fields ?? []).filter((f) => f.isVisible);
 
   async function handleDelete() {
     setDeleteError(null);
     try {
+      // Deferred: this only queues the deletion for a second person to approve.
       await deleteItem.mutateAsync(item!.id);
       onOpenChange(false);
+      setApprovalSent(true);
     } catch (error) {
       setDeleteError(
         error instanceof ApiRequestError && error.code === 'ITEM_HAS_STOCK'
           ? 'Stokda məhsul qalıb — əvvəlcə stoku sıfırlayın.'
-          : 'Silinmədi.',
+          : error instanceof ApiRequestError && error.code === 'ENTITY_PENDING_APPROVAL'
+            ? 'Bu məhsulun təsdiq gözləyən dəyişikliyi var — əvvəlcə o qərara alınmalıdır.'
+            : 'Silinmədi.',
       );
     }
   }
@@ -72,26 +113,66 @@ export function ItemDetailDialog({ open, onOpenChange, itemId }: ItemDetailDialo
             </div>
           )}
 
-          <div className="mb-4 grid grid-cols-2 gap-3 rounded-lg border border-line p-3 text-sm md:grid-cols-4">
-            <div>
-              <div className="text-xs text-muted-foreground">Barkod</div>
-              <div className="mono font-semibold">{item.barcode ?? '—'}</div>
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">Ölçü vahidi</div>
-              <div className="font-semibold">{item.unit}</div>
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">Alış qiyməti</div>
-              <div className="font-semibold">{item.purchasePrice}</div>
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">Miqdar</div>
-              <div className="font-semibold">{item.isSerialized ? 'Seriyalı' : item.quantity}</div>
+          <div className="mb-4 grid grid-cols-2 gap-3 rounded-lg border border-line p-3 md:grid-cols-4">
+            <DetailRow label="Barkod">
+              <span className="mono">{item.barcode ?? '—'}</span>
+            </DetailRow>
+            <DetailRow label="Ölçü vahidi">{item.unit}</DetailRow>
+            <DetailRow label="Alış qiyməti">{formatMoney(item.purchasePrice)}</DetailRow>
+            <DetailRow label="Miqdar">{item.isSerialized ? 'Seriyalı' : item.quantity}</DetailRow>
+          </div>
+
+          <div className="mb-4">
+            <div className="text-xs text-muted-foreground">Yerləşdiyi yer</div>
+            <div className="mt-1 flex flex-wrap items-center gap-1 text-sm">
+              <span className="font-semibold text-gold">Anbar</span>
+              {nodePath ? (
+                nodePath.map((node) => (
+                  <span key={node.id} className="flex items-center gap-1">
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="font-semibold">{node.name}</span>
+                  </span>
+                ))
+              ) : (
+                <span className="text-muted-foreground">yüklənir...</span>
+              )}
             </div>
           </div>
 
-          <div className="mb-4 flex flex-wrap gap-2">
+          {fields.length > 0 && (
+            <div className="mb-4 rounded-lg border border-line p-3">
+              <div className="mb-3 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                Sahələr
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {fields.map((field) => (
+                  <div key={field.id} className={isWideField(field.fieldType) ? 'sm:col-span-2' : ''}>
+                    <div className="text-xs text-muted-foreground">{field.label}</div>
+                    <div className="mt-0.5 text-sm font-semibold">
+                      {renderAttributeValue(field.fieldType, item.attributes?.[field.fieldKey], 'detail')}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="mb-4">
+            <div className="text-xs text-muted-foreground">Qeyd</div>
+            <div className="mt-0.5 whitespace-pre-wrap text-sm">
+              {item.notes ? item.notes : <span className="text-muted-foreground">—</span>}
+            </div>
+          </div>
+
+          <div className="mb-4 flex flex-wrap gap-x-4 gap-y-1 border-t border-line pt-3 text-xs text-muted-foreground">
+            <span>Yaradılıb: {formatDateTime(item.createdAt)}</span>
+            <span>Yenilənib: {formatDateTime(item.updatedAt)}</span>
+          </div>
+
+          {item.isSerialized && <ItemUnitsPanel item={item} />}
+
+          {/* Actions live at the very bottom so the popup reads as information first, tools after. */}
+          <div className="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">
             <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
               <Pencil className="h-4 w-4" />
               Redaktə et
@@ -120,13 +201,11 @@ export function ItemDetailDialog({ open, onOpenChange, itemId }: ItemDetailDialo
                 </Button>
               </>
             )}
-            <Button variant="danger" size="sm" onClick={handleDelete}>
+            <Button variant="danger" size="sm" className="ml-auto" onClick={handleDelete}>
               <Trash2 className="h-4 w-4" />
               Sil
             </Button>
           </div>
-
-          {item.isSerialized && <ItemUnitsPanel item={item} />}
         </DialogContent>
       </Dialog>
 
@@ -138,6 +217,11 @@ export function ItemDetailDialog({ open, onOpenChange, itemId }: ItemDetailDialo
       />
       <MoveItemDialog open={moveOpen} onOpenChange={setMoveOpen} item={item} />
       <QrCodeDialog open={qrOpen} onOpenChange={setQrOpen} title={item.name} value={item.qrCode} />
+      <ApprovalSubmittedDialog
+        open={approvalSent}
+        onOpenChange={setApprovalSent}
+        description="Məhsul silinməsi"
+      />
       {stockKind && (
         <StockOperationDialog
           open={Boolean(stockKind)}

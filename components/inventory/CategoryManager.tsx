@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/dialog';
 import { CategoryFormDialog } from '@/components/inventory/CategoryFormDialog';
 import { ApiRequestError } from '@/lib/api/client';
+import { ApprovalSubmittedDialog } from '@/components/approval/ApprovalSubmittedDialog';
 import { cn } from '@/lib/utils';
 import type { InventoryCategory, InventoryCategoryField, InventoryFieldType } from '@/types/inventory';
 
@@ -97,6 +98,7 @@ export function CategoryManager() {
   const [listError, setListError] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [draggedFieldId, setDraggedFieldId] = useState<string | null>(null);
+  const [approvalSent, setApprovalSent] = useState<string | null>(null);
 
   useEffect(() => {
     if (!selectedId && categories && categories.length > 0) {
@@ -113,13 +115,16 @@ export function CategoryManager() {
   async function handleDelete(category: InventoryCategory) {
     setListError(null);
     try {
+      // Deferred: queued for a second person to approve, nothing is removed yet.
       await deleteCategory.mutateAsync(category.id);
-      if (selectedId === category.id) setSelectedId(null);
+      setApprovalSent('Kateqoriyanın silinməsi');
     } catch (error) {
       setListError(
         error instanceof ApiRequestError && error.code === 'CATEGORY_NOT_EMPTY'
           ? 'Bu kateqoriyada məhsullar var — əvvəlcə onları başqa kateqoriyaya köçürün və ya silin.'
-          : 'Kateqoriya silinmədi.',
+          : error instanceof ApiRequestError && error.code === 'ENTITY_PENDING_APPROVAL'
+            ? 'Bu kateqoriyanın təsdiq gözləyən dəyişikliyi var — əvvəlcə o qərara alınmalıdır.'
+            : 'Kateqoriya silinmədi.',
       );
     }
   }
@@ -190,9 +195,12 @@ export function CategoryManager() {
       }
       reset();
       closeFieldDialog();
+      setApprovalSent(editingField ? 'Sahə redaktəsi' : 'Sahə əlavəsi');
     } catch (err) {
       setFieldError(
-        err instanceof ApiRequestError && err.code === 'DUPLICATE_FIELD_KEY'
+        err instanceof ApiRequestError && err.code === 'ENTITY_PENDING_APPROVAL'
+          ? 'Bu kateqoriyanın təsdiq gözləyən dəyişikliyi var — əvvəlcə o qərara alınmalıdır.'
+          : err instanceof ApiRequestError && err.code === 'DUPLICATE_FIELD_KEY'
           ? 'Bu field_key artıq mövcuddur.'
           : editingField
             ? 'Sahə yenilənmədi.'
@@ -206,11 +214,14 @@ export function CategoryManager() {
     setFieldError(null);
     try {
       await removeField.mutateAsync({ categoryId: selectedCategory.id, fieldId });
+      setApprovalSent('Sahənin silinməsi');
     } catch (err) {
       setFieldError(
         err instanceof ApiRequestError && err.code === 'SYSTEM_FIELD_PROTECTED'
           ? 'Bu sistem sahəsidir və silinə bilməz.'
-          : 'Sahə silinmədi.',
+          : err instanceof ApiRequestError && err.code === 'ENTITY_PENDING_APPROVAL'
+            ? 'Bu kateqoriyanın təsdiq gözləyən dəyişikliyi var — əvvəlcə o qərara alınmalıdır.'
+            : 'Sahə silinmədi.',
       );
     }
   }
@@ -230,8 +241,13 @@ export function CategoryManager() {
           showInTable: field.showInTable,
         },
       });
-    } catch {
-      setFieldError('Sahə yenilənmədi.');
+      setApprovalSent('Sahə redaktəsi');
+    } catch (err) {
+      setFieldError(
+        err instanceof ApiRequestError && err.code === 'ENTITY_PENDING_APPROVAL'
+          ? 'Bu kateqoriyanın təsdiq gözləyən dəyişikliyi var — əvvəlcə o qərara alınmalıdır.'
+          : 'Sahə yenilənmədi.',
+      );
     }
   }
 
@@ -250,8 +266,13 @@ export function CategoryManager() {
           showInTable: !field.showInTable,
         },
       });
-    } catch {
-      setFieldError('Sahə yenilənmədi.');
+      setApprovalSent('Sahə redaktəsi');
+    } catch (err) {
+      setFieldError(
+        err instanceof ApiRequestError && err.code === 'ENTITY_PENDING_APPROVAL'
+          ? 'Bu kateqoriyanın təsdiq gözləyən dəyişikliyi var — əvvəlcə o qərara alınmalıdır.'
+          : 'Sahə yenilənmədi.',
+      );
     }
   }
 
@@ -411,24 +432,26 @@ export function CategoryManager() {
                                 />
                               </td>
                               <td className="r">
-                                <button
-                                  type="button"
-                                  onClick={() => openEditField(field)}
-                                  className="btn btn-ghost btn-icon"
-                                  aria-label="Redaktə et"
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </button>
-                                {!field.isSystem && (
+                                <div className="flex items-center justify-end gap-0.5">
                                   <button
                                     type="button"
-                                    onClick={() => handleRemoveField(field.id)}
+                                    onClick={() => openEditField(field)}
                                     className="btn btn-ghost btn-icon"
-                                    aria-label="Sahəni sil"
+                                    aria-label="Redaktə et"
                                   >
-                                    <Trash2 className="h-4 w-4 text-danger" />
+                                    <Pencil className="h-4 w-4" />
                                   </button>
-                                )}
+                                  {!field.isSystem && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveField(field.id)}
+                                      className="btn btn-ghost btn-icon"
+                                      aria-label="Sahəni sil"
+                                    >
+                                      <Trash2 className="h-4 w-4 text-danger" />
+                                    </button>
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           ))}
@@ -483,6 +506,15 @@ export function CategoryManager() {
                       </button>
                       <button
                         type="button"
+                        onClick={() => setEditingCategory(category)}
+                        className="btn btn-ghost btn-icon shrink-0"
+                        aria-label="Redaktə et"
+                        title="Adı / ölçü vahidini redaktə et"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => handleDelete(category)}
                         className="btn btn-ghost btn-icon shrink-0"
                         aria-label="Sil"
@@ -497,6 +529,12 @@ export function CategoryManager() {
           </div>
         </div>
       )}
+
+      <ApprovalSubmittedDialog
+        open={approvalSent !== null}
+        onOpenChange={(open) => !open && setApprovalSent(null)}
+        description={approvalSent ?? undefined}
+      />
 
       <CategoryFormDialog open={createOpen} onOpenChange={setCreateOpen} />
       <CategoryFormDialog

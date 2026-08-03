@@ -143,6 +143,14 @@ export const NAV_GROUPS: NavGroup[] = [
             permission: 'WH_READ',
             built: true,
           },
+          {
+            key: 'M19_WAREHOUSE_APPROVALS',
+            label: 'Təsdiqləmələr',
+            href: '/approvals',
+            icon: ShieldCheck,
+            permission: 'APPROVAL_READ',
+            built: true,
+          },
         ],
       },
       {

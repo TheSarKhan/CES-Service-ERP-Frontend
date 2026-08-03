@@ -12,6 +12,7 @@ import {
 import { Alert } from '@/components/ui/alert';
 import { useInventoryLookup } from '@/hooks/use-inventory';
 import { ApiRequestError } from '@/lib/api/client';
+import { parseScannedCode } from '@/lib/utils/qr';
 import type { InventoryLookupResult } from '@/types/inventory';
 
 const SCANNER_ELEMENT_ID = 'inventory-qr-scanner-region';
@@ -54,7 +55,8 @@ export function QrScanDialog({ open, onOpenChange, onResult }: QrScanDialogProps
             resolvingRef.current = true;
             setStatus('resolving');
             try {
-              const result = await lookup.mutateAsync(decodedText);
+              // Handles both new URL labels and older bare-code ones still on the shelves.
+              const result = await lookup.mutateAsync(parseScannedCode(decodedText));
               onResult(result);
               onOpenChange(false);
             } catch (lookupError) {

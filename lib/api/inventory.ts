@@ -1,5 +1,6 @@
 import { apiDelete, apiGet, apiPatch, apiPost, apiPostForm, apiPut } from './client';
 import type { PageMeta, PageResponse } from '@/types/api';
+import type { ApprovalRequest } from '@/types/approval';
 import type {
   InventoryCategory,
   InventoryCategoryField,
@@ -48,12 +49,12 @@ export async function createInventoryNode(body: InventoryNodeRequest): Promise<I
   return apiPost<InventoryNode>('/inventory/nodes', body);
 }
 
-export async function updateInventoryNode(id: string, body: InventoryNodeRequest): Promise<InventoryNode> {
-  return apiPut<InventoryNode>(`/inventory/nodes/${id}`, body);
+export async function updateInventoryNode(id: string, body: InventoryNodeRequest): Promise<ApprovalRequest> {
+  return apiPut<ApprovalRequest>(`/inventory/nodes/${id}`, body);
 }
 
-export async function deleteInventoryNode(id: string): Promise<void> {
-  return apiDelete(`/inventory/nodes/${id}`);
+export async function deleteInventoryNode(id: string): Promise<ApprovalRequest> {
+  return apiDelete<ApprovalRequest>(`/inventory/nodes/${id}`);
 }
 
 // ── Categories ───────────────────────────────────────────────────────────
@@ -73,31 +74,31 @@ export async function createInventoryCategory(body: InventoryCategoryRequest): P
 export async function updateInventoryCategory(
   id: string,
   body: InventoryCategoryRequest,
-): Promise<InventoryCategory> {
-  return apiPut<InventoryCategory>(`/inventory/categories/${id}`, body);
+): Promise<ApprovalRequest> {
+  return apiPut<ApprovalRequest>(`/inventory/categories/${id}`, body);
 }
 
-export async function deleteInventoryCategory(id: string): Promise<void> {
-  return apiDelete(`/inventory/categories/${id}`);
+export async function deleteInventoryCategory(id: string): Promise<ApprovalRequest> {
+  return apiDelete<ApprovalRequest>(`/inventory/categories/${id}`);
 }
 
 export async function addInventoryCategoryField(
   categoryId: string,
   body: InventoryCategoryFieldRequest,
-): Promise<InventoryCategoryField> {
-  return apiPost<InventoryCategoryField>(`/inventory/categories/${categoryId}/fields`, body);
+): Promise<ApprovalRequest> {
+  return apiPost<ApprovalRequest>(`/inventory/categories/${categoryId}/fields`, body);
 }
 
 export async function updateInventoryCategoryField(
   categoryId: string,
   fieldId: string,
   body: InventoryCategoryFieldRequest,
-): Promise<InventoryCategoryField> {
-  return apiPut<InventoryCategoryField>(`/inventory/categories/${categoryId}/fields/${fieldId}`, body);
+): Promise<ApprovalRequest> {
+  return apiPut<ApprovalRequest>(`/inventory/categories/${categoryId}/fields/${fieldId}`, body);
 }
 
-export async function removeInventoryCategoryField(categoryId: string, fieldId: string): Promise<void> {
-  return apiDelete(`/inventory/categories/${categoryId}/fields/${fieldId}`);
+export async function removeInventoryCategoryField(categoryId: string, fieldId: string): Promise<ApprovalRequest> {
+  return apiDelete<ApprovalRequest>(`/inventory/categories/${categoryId}/fields/${fieldId}`);
 }
 
 /** New field order for a category — array position becomes sort_order. */
@@ -137,28 +138,28 @@ export async function createInventoryItem(body: InventoryItemRequest): Promise<I
   return apiPost<InventoryItem>('/inventory/items', body);
 }
 
-export async function updateInventoryItem(id: string, body: InventoryItemRequest): Promise<InventoryItem> {
-  return apiPut<InventoryItem>(`/inventory/items/${id}`, body);
+export async function updateInventoryItem(id: string, body: InventoryItemRequest): Promise<ApprovalRequest> {
+  return apiPut<ApprovalRequest>(`/inventory/items/${id}`, body);
 }
 
-export async function deleteInventoryItem(id: string): Promise<void> {
-  return apiDelete(`/inventory/items/${id}`);
+export async function deleteInventoryItem(id: string): Promise<ApprovalRequest> {
+  return apiDelete<ApprovalRequest>(`/inventory/items/${id}`);
 }
 
-export async function moveInventoryItem(id: string, nodeId: string): Promise<InventoryItem> {
-  return apiPost<InventoryItem>(`/inventory/items/${id}/move`, { nodeId });
+export async function moveInventoryItem(id: string, nodeId: string): Promise<ApprovalRequest> {
+  return apiPost<ApprovalRequest>(`/inventory/items/${id}/move`, { nodeId });
 }
 
-export async function stockInInventoryItem(id: string, body: StockQuantityRequest): Promise<InventoryItem> {
-  return apiPost<InventoryItem>(`/inventory/items/${id}/stock-in`, body);
+export async function stockInInventoryItem(id: string, body: StockQuantityRequest): Promise<ApprovalRequest> {
+  return apiPost<ApprovalRequest>(`/inventory/items/${id}/stock-in`, body);
 }
 
-export async function stockOutInventoryItem(id: string, body: StockQuantityRequest): Promise<InventoryItem> {
-  return apiPost<InventoryItem>(`/inventory/items/${id}/stock-out`, body);
+export async function stockOutInventoryItem(id: string, body: StockQuantityRequest): Promise<ApprovalRequest> {
+  return apiPost<ApprovalRequest>(`/inventory/items/${id}/stock-out`, body);
 }
 
-export async function adjustInventoryItem(id: string, body: StockQuantityRequest): Promise<InventoryItem> {
-  return apiPost<InventoryItem>(`/inventory/items/${id}/adjust`, body);
+export async function adjustInventoryItem(id: string, body: StockQuantityRequest): Promise<ApprovalRequest> {
+  return apiPost<ApprovalRequest>(`/inventory/items/${id}/adjust`, body);
 }
 
 // ── Serialized units / warranty ─────────────────────────────────────────

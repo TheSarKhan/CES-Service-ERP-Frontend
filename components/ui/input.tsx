@@ -19,9 +19,17 @@ export interface InputProps
  */
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   (
-    { className, wrapperClassName, error, inputSize = 'default', icon, ...props },
+    { className, wrapperClassName, error, inputSize = 'default', icon, onFocus, ...props },
     ref,
   ) => {
+    // Number inputs are uncontrolled (react-hook-form's register), so a default like `0` sits
+    // in the DOM as literal text "0" — clicking in and typing inserts next to it (e.g. "05")
+    // instead of replacing it. Selecting the existing text on focus makes typing overwrite it.
+    function handleFocus(e: React.FocusEvent<HTMLInputElement>) {
+      if (props.type === 'number') e.target.select();
+      onFocus?.(e);
+    }
+
     return (
       <div
         className={cn(
@@ -34,7 +42,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         )}
       >
         {icon}
-        <input ref={ref} className={className} {...props} />
+        <input ref={ref} className={className} onFocus={handleFocus} {...props} />
       </div>
     );
   },

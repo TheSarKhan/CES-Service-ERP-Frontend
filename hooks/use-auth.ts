@@ -7,6 +7,22 @@ import * as authApi from '@/lib/api/auth';
 import type { LoginRequest } from '@/types/auth';
 
 /**
+ * Where to land after a successful login. The middleware parks the originally requested path in
+ * `?from=`, so scanning a QR label while logged out returns to that record instead of the
+ * dashboard.
+ *
+ * Read from `window.location` at submit time rather than via `useSearchParams`, which would force
+ * every consumer of this hook behind a Suspense boundary and break static prerendering of /login.
+ * Only same-site paths are honoured — an absolute URL here would be an open redirect.
+ */
+function redirectTargetAfterLogin(): string {
+  if (typeof window === 'undefined') return '/';
+  const from = new URLSearchParams(window.location.search).get('from');
+  if (!from || !from.startsWith('/') || from.startsWith('//') || from === '/login') return '/';
+  return from;
+}
+
+/**
  * Thin React wrapper over the auth store that also wires in navigation and the
  * auth API. Components should prefer this over touching the store directly.
  */
@@ -24,12 +40,14 @@ export function useAuth() {
 
   const isAuthenticated = Boolean(accessToken && user);
 
-  /** Perform a login and route to the dashboard home ("/"). */
+  /**
+   * Perform a login and route onward — see {@link redirectTargetAfterLogin} for where to.
+   */
   const login = useCallback(
     async (credentials: LoginRequest) => {
       const result = await authApi.login(credentials);
       setAuth(result);
-      router.replace('/');
+      router.replace(redirectTargetAfterLogin());
       return result;
     },
     [router, setAuth],

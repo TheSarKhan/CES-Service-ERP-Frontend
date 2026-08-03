@@ -18,6 +18,7 @@ import { Alert } from '@/components/ui/alert';
 import { useCreateInventoryCategory, useUpdateInventoryCategory } from '@/hooks/use-inventory';
 import { ApiRequestError } from '@/lib/api/client';
 import { UNIT_OPTIONS } from '@/lib/constants/units';
+import { ApprovalSubmittedDialog } from '@/components/approval/ApprovalSubmittedDialog';
 import type { InventoryCategory } from '@/types/inventory';
 
 const categoryFormSchema = z.object({
@@ -36,6 +37,7 @@ export interface CategoryFormDialogProps {
 
 export function CategoryFormDialog({ open, onOpenChange, editingCategory }: CategoryFormDialogProps) {
   const [serverError, setServerError] = useState<string | null>(null);
+  const [approvalSent, setApprovalSent] = useState(false);
   const isEditing = Boolean(editingCategory);
   const createCategory = useCreateInventoryCategory();
   const updateCategory = useUpdateInventoryCategory();
@@ -71,16 +73,21 @@ export function CategoryFormDialog({ open, onOpenChange, editingCategory }: Cate
     setServerError(null);
     try {
       if (isEditing) {
+        // Deferred: editing a category reshapes every product filed under it, so it's reviewed.
         await updateCategory.mutateAsync({
           id: editingCategory!.id,
           body: { name: values.name, defaultUnit: values.defaultUnit, isActive: editingCategory!.isActive },
         });
-      } else {
-        await createCategory.mutateAsync({ name: values.name, defaultUnit: values.defaultUnit });
+        onOpenChange(false);
+        setApprovalSent(true);
+        return;
       }
+      await createCategory.mutateAsync({ name: values.name, defaultUnit: values.defaultUnit });
       onOpenChange(false);
     } catch (error) {
-      if (error instanceof ApiRequestError && error.code === 'DUPLICATE_CATEGORY_NAME') {
+      if (error instanceof ApiRequestError && error.code === 'ENTITY_PENDING_APPROVAL') {
+        setServerError('Bu kateqoriyanın təsdiq gözləyən dəyişikliyi var — əvvəlcə o qərara alınmalıdır.');
+      } else if (error instanceof ApiRequestError && error.code === 'DUPLICATE_CATEGORY_NAME') {
         setServerError('Bu adda kateqoriya artıq mövcuddur.');
       } else {
         setServerError(error instanceof Error ? error.message : 'Serverlə əlaqə qurulmadı.');
@@ -89,6 +96,7 @@ export function CategoryFormDialog({ open, onOpenChange, editingCategory }: Cate
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
@@ -141,5 +149,11 @@ export function CategoryFormDialog({ open, onOpenChange, editingCategory }: Cate
         </form>
       </DialogContent>
     </Dialog>
+    <ApprovalSubmittedDialog
+      open={approvalSent}
+      onOpenChange={setApprovalSent}
+      description="Kateqoriya redaktəsi"
+    />
+    </>
   );
 }

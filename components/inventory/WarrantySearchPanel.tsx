@@ -10,6 +10,7 @@ import { Alert } from '@/components/ui/alert';
 import { Pagination } from '@/components/ui/pagination';
 import { UnitStatusBadge, WarrantyStatusBadge } from '@/components/inventory/badges';
 import { ItemDetailDialog } from '@/components/inventory/ItemDetailDialog';
+import { formatDate } from '@/lib/utils/format';
 import type { InventoryUnitStatus } from '@/types/inventory';
 
 const PAGE_SIZE = 20;
@@ -112,7 +113,9 @@ export function WarrantySearchPanel() {
                   <UnitStatusBadge status={unit.status} />
                   <WarrantyStatusBadge status={unit.warrantyStatus} />
                   {unit.warrantyEndDate && (
-                    <span className="text-xs text-muted-foreground">{unit.warrantyEndDate}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {formatDate(unit.warrantyEndDate)}
+                    </span>
                   )}
                 </div>
               </button>

@@ -11,7 +11,7 @@ import { Alert } from '@/components/ui/alert';
 import { Pagination } from '@/components/ui/pagination';
 import { ItemFormDialog } from '@/components/inventory/ItemFormDialog';
 import { ItemDetailDialog } from '@/components/inventory/ItemDetailDialog';
-import { renderAttributeValue } from '@/components/inventory/AttributeValue';
+import { ItemNameCell, renderAttributeValue } from '@/components/inventory/AttributeValue';
 import type { InventoryCategory, InventoryNode } from '@/types/inventory';
 
 const SECTION_PAGE_SIZE = 10;
@@ -43,7 +43,8 @@ function CategorySection({
   });
   const items = data?.items ?? [];
   const meta = data?.meta;
-  const tableFields = (category?.fields ?? []).filter((f) => f.showInTable);
+  // "Şəkil" (the auto-seeded photo field) shows inline with the name instead of its own column.
+  const tableFields = (category?.fields ?? []).filter((f) => f.showInTable && f.fieldKey !== 'sekil');
 
   return (
     <div className="rounded-xl border border-line">
@@ -98,7 +99,9 @@ function CategorySection({
               <tbody>
                 {items.map((item) => (
                   <tr key={item.id} onClick={() => onSelectItem(item.id)} className="cursor-pointer">
-                    <td className="font-semibold">{item.name}</td>
+                    <td>
+                      <ItemNameCell name={item.name} imageUrl={item.attributes?.sekil as string | undefined} />
+                    </td>
                     <td className="mono">{item.sku}</td>
                     <td className="mono text-muted-foreground">{item.barcode ?? '—'}</td>
                     <td>{item.unit}</td>
@@ -176,7 +179,6 @@ export function CategorizedItemTable({
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [createCategoryId, setCreateCategoryId] = useState<string | null>(null);
   const [pickedCategoryId, setPickedCategoryId] = useState('');
-  const [addAnotherCategoryId, setAddAnotherCategoryId] = useState('');
 
   const nodeCategoryIds = useMemo(() => node.categoryIds ?? [], [node.categoryIds]);
   const isRestricted = nodeCategoryIds.length > 0;
@@ -200,11 +202,6 @@ export function CategorizedItemTable({
       return nameA.localeCompare(nameB, 'az');
     });
   }, [isRestricted, nodeCategoryIds, presentCategoryIds, categories]);
-
-  const unrepresentedCategories = useMemo(
-    () => availableCategories.filter((c) => !sectionCategoryIds.includes(c.id)),
-    [availableCategories, sectionCategoryIds],
-  );
 
   const isLoading = !isRestricted && idsLoading;
   const isError = !isRestricted && idsError;
@@ -304,32 +301,12 @@ export function CategorizedItemTable({
         />
       ))}
 
-      {sectionCategoryIds.length > 0 && unrepresentedCategories.length > 0 && (
-        <select
-          className="h-10 w-full max-w-xs rounded-[11px] border border-dashed border-line bg-transparent px-3 text-sm text-muted-foreground"
-          value={addAnotherCategoryId}
-          onChange={(e) => {
-            const value = e.target.value;
-            setAddAnotherCategoryId(value);
-            if (value) setCreateCategoryId(value);
-          }}
-        >
-          <option value="">+ Başqa kateqoriyadan məhsul...</option>
-          {unrepresentedCategories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-      )}
-
       <ItemFormDialog
         open={createCategoryId !== null}
         onOpenChange={(open) => {
           if (!open) {
             setCreateCategoryId(null);
             setPickedCategoryId('');
-            setAddAnotherCategoryId('');
           }
         }}
         nodeId={node.id}

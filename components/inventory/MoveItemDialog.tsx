@@ -11,6 +11,8 @@ import {
 import { Alert } from '@/components/ui/alert';
 import { NodeTree } from '@/components/inventory/NodeTree';
 import { useMoveInventoryItem } from '@/hooks/use-inventory';
+import { ApiRequestError } from '@/lib/api/client';
+import { ApprovalSubmittedDialog } from '@/components/approval/ApprovalSubmittedDialog';
 import type { InventoryItem, InventoryNode } from '@/types/inventory';
 
 export interface MoveItemDialogProps {
@@ -22,6 +24,7 @@ export interface MoveItemDialogProps {
 /** "Məhsulu başqa yerə köçür" — browse the Layer tree and drop the item on any node. */
 export function MoveItemDialog({ open, onOpenChange, item }: MoveItemDialogProps) {
   const [error, setError] = useState<string | null>(null);
+  const [approvalSent, setApprovalSent] = useState(false);
   const moveItem = useMoveInventoryItem();
 
   if (!item) return null;
@@ -29,14 +32,21 @@ export function MoveItemDialog({ open, onOpenChange, item }: MoveItemDialogProps
   async function handlePick(node: InventoryNode) {
     setError(null);
     try {
+      // Deferred: the move is parked for approval rather than applied.
       await moveItem.mutateAsync({ id: item!.id, nodeId: node.id });
       onOpenChange(false);
-    } catch {
-      setError('Köçürmə alınmadı.');
+      setApprovalSent(true);
+    } catch (err) {
+      setError(
+        err instanceof ApiRequestError && err.code === 'ENTITY_PENDING_APPROVAL'
+          ? 'Bu məhsulun təsdiq gözləyən dəyişikliyi var — əvvəlcə o qərara alınmalıdır.'
+          : 'Köçürmə alınmadı.',
+      );
     }
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
@@ -55,5 +65,11 @@ export function MoveItemDialog({ open, onOpenChange, item }: MoveItemDialogProps
         <NodeTree mode="browse" onRowClick={handlePick} />
       </DialogContent>
     </Dialog>
+    <ApprovalSubmittedDialog
+      open={approvalSent}
+      onOpenChange={setApprovalSent}
+      description="Məhsulun köçürülməsi"
+    />
+    </>
   );
 }

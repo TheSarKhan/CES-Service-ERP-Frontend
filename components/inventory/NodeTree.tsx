@@ -11,6 +11,7 @@ import { Alert } from '@/components/ui/alert';
 import { NodeFormDialog } from '@/components/inventory/NodeFormDialog';
 import { QrCodeDialog } from '@/components/inventory/QrCodeDialog';
 import { ApiRequestError } from '@/lib/api/client';
+import { ApprovalSubmittedDialog } from '@/components/approval/ApprovalSubmittedDialog';
 import { cn } from '@/lib/utils';
 import type { InventoryNode } from '@/types/inventory';
 
@@ -37,6 +38,7 @@ export function NodeTree({ mode, onRowClick, selectedId }: NodeTreeProps) {
   const [editingNode, setEditingNode] = useState<InventoryNode | null>(null);
   const [qrNode, setQrNode] = useState<InventoryNode | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [approvalSent, setApprovalSent] = useState(false);
 
   const { data: rootNodes, isLoading, isError } = useInventoryNodeChildren(undefined);
   const deleteNode = useDeleteInventoryNode();
@@ -44,12 +46,16 @@ export function NodeTree({ mode, onRowClick, selectedId }: NodeTreeProps) {
   async function handleDelete(node: InventoryNode) {
     setError(null);
     try {
+      // Deferred: this only queues the deletion for a second person to approve.
       await deleteNode.mutateAsync(node.id);
+      setApprovalSent(true);
     } catch (err) {
       setError(
         err instanceof ApiRequestError && err.code === 'NODE_NOT_EMPTY'
           ? `“${node.name}” node-unun alt node-ları və ya məhsulları var — əvvəlcə onları silin.`
-          : 'Silinmədi.',
+          : err instanceof ApiRequestError && err.code === 'ENTITY_PENDING_APPROVAL'
+            ? 'Bu qovluğun təsdiq gözləyən dəyişikliyi var — əvvəlcə o qərara alınmalıdır.'
+            : 'Silinmədi.',
       );
     }
   }
@@ -120,6 +126,11 @@ export function NodeTree({ mode, onRowClick, selectedId }: NodeTreeProps) {
         onOpenChange={(open) => !open && setEditingNode(null)}
         parentId={editingNode?.parentId ?? null}
         editingNode={editingNode}
+      />
+      <ApprovalSubmittedDialog
+        open={approvalSent}
+        onOpenChange={setApprovalSent}
+        description="Qovluğun silinməsi"
       />
       {qrNode && (
         <QrCodeDialog

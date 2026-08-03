@@ -19,6 +19,12 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ARG NEXT_PUBLIC_API_URL=http://localhost:8080
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
+# Public origin printed into QR labels (/scan/<code>). Left empty the app falls back to the
+# browser's own origin, which is already correct — this only pins it for labels that must keep
+# resolving even if the app is later reached through a different host.
+ARG NEXT_PUBLIC_APP_URL=
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+
 RUN npm run build
 
 # ---- Runner ----

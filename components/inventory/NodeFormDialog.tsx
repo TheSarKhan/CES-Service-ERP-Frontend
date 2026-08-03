@@ -23,6 +23,7 @@ import {
   useUpdateInventoryNode,
 } from '@/hooks/use-inventory';
 import { ApiRequestError } from '@/lib/api/client';
+import { ApprovalSubmittedDialog } from '@/components/approval/ApprovalSubmittedDialog';
 import type { InventoryNode } from '@/types/inventory';
 
 const nodeFormSchema = z.object({
@@ -46,6 +47,7 @@ export interface NodeFormDialogProps {
 /** Create/rename a Layer node. */
 export function NodeFormDialog({ open, onOpenChange, parentId, editingNode, onSaved }: NodeFormDialogProps) {
   const [serverError, setServerError] = useState<string | null>(null);
+  const [approvalSent, setApprovalSent] = useState(false);
   const [categoryIds, setCategoryIds] = useState<string[]>([]);
   const createNode = useCreateInventoryNode();
   const updateNode = useUpdateInventoryNode();
@@ -77,29 +79,37 @@ export function NodeFormDialog({ open, onOpenChange, parentId, editingNode, onSa
   const onSubmit = async (values: NodeFormValues) => {
     setServerError(null);
     try {
-      const node = isEditing
-        ? await updateNode.mutateAsync({
-            id: editingNode!.id,
-            body: {
-              name: values.name,
-              code: values.code || null,
-              parentId: editingNode!.parentId,
-              notes: values.notes || null,
-              isActive: editingNode!.isActive,
-              categoryIds,
-            },
-          })
-        : await createNode.mutateAsync({
+      if (isEditing) {
+        // Deferred: folder edits go to the approval queue, so there's no updated node to hand back.
+        await updateNode.mutateAsync({
+          id: editingNode!.id,
+          body: {
             name: values.name,
             code: values.code || null,
-            parentId,
+            parentId: editingNode!.parentId,
             notes: values.notes || null,
+            isActive: editingNode!.isActive,
             categoryIds,
-          });
+          },
+        });
+        onOpenChange(false);
+        setApprovalSent(true);
+        return;
+      }
+      // Creating a folder still applies immediately — it changes nothing that already exists.
+      const node = await createNode.mutateAsync({
+        name: values.name,
+        code: values.code || null,
+        parentId,
+        notes: values.notes || null,
+        categoryIds,
+      });
       onSaved?.(node);
       onOpenChange(false);
     } catch (error) {
-      if (error instanceof ApiRequestError && error.code === 'DUPLICATE_NODE_NAME') {
+      if (error instanceof ApiRequestError && error.code === 'ENTITY_PENDING_APPROVAL') {
+        setServerError('Bu qovluğun təsdiq gözləyən dəyişikliyi var — əvvəlcə o qərara alınmalıdır.');
+      } else if (error instanceof ApiRequestError && error.code === 'DUPLICATE_NODE_NAME') {
         setServerError('Bu adda bir node artıq bu səviyyədə mövcuddur.');
       } else {
         setServerError(error instanceof Error ? error.message : 'Serverlə əlaqə qurulmadı.');
@@ -108,6 +118,7 @@ export function NodeFormDialog({ open, onOpenChange, parentId, editingNode, onSa
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
@@ -188,5 +199,11 @@ export function NodeFormDialog({ open, onOpenChange, parentId, editingNode, onSa
         </form>
       </DialogContent>
     </Dialog>
+    <ApprovalSubmittedDialog
+      open={approvalSent}
+      onOpenChange={setApprovalSent}
+      description="Qovluq redaktəsi"
+    />
+    </>
   );
 }

@@ -18,19 +18,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { renderAttributeValue } from '@/components/inventory/AttributeValue';
+import { ItemNameCell, renderAttributeValue } from '@/components/inventory/AttributeValue';
 import { ItemDetailDialog } from '@/components/inventory/ItemDetailDialog';
 import type { InventoryFieldType } from '@/types/inventory';
 
 const PAGE_SIZE = 20;
 
 /**
- * The 4 fields auto-seeded on every category (see InventoryCategoryService.SYSTEM_FIELDS on the
+ * The auto-seeded fields on every category (see InventoryCategoryService.SYSTEM_FIELDS on the
  * backend) — since every category has these under the same fieldKey, they're safe to show as
  * fixed columns in a cross-category results table, unlike a category's own custom fields.
+ * "Şəkil" is excluded here — it renders inline with the name (see `ItemNameCell`) instead.
  */
 const SYSTEM_FIELD_COLUMNS: { key: string; label: string; type: InventoryFieldType }[] = [
-  { key: 'sekil', label: 'Şəkil', type: 'IMAGE' },
   { key: 'aciqlama', label: 'Açıqlama', type: 'TEXTAREA' },
   { key: 'istehsalci', label: 'İstehsalçı / Təchizatçı', type: 'TEXT' },
   { key: 'veziyyet', label: 'Vəziyyət', type: 'TEXT' },
@@ -185,7 +185,9 @@ export function ProductSearchPanel() {
             <tbody>
               {items.map((item) => (
                 <tr key={item.id} onClick={() => setSelectedItemId(item.id)} className="cursor-pointer">
-                  <td className="font-semibold">{item.name}</td>
+                  <td>
+                    <ItemNameCell name={item.name} imageUrl={item.attributes?.sekil as string | undefined} />
+                  </td>
                   {SYSTEM_FIELD_COLUMNS.map((col) => (
                     <td key={col.key}>{renderAttributeValue(col.type, item.attributes?.[col.key])}</td>
                   ))}

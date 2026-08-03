@@ -196,10 +196,15 @@ export async function apiPatch<T>(url: string, body?: unknown): Promise<T> {
   }
 }
 
-/** DELETE (soft delete) — returns void (SRS §6.4, 204). */
-export async function apiDelete(url: string): Promise<void> {
+/**
+ * DELETE (soft delete). Usually 204 with no body (SRS §6.4), but endpoints behind the approval
+ * queue answer 202 with the created request — so the payload is unwrapped when there is one, and
+ * `T` defaults to `void` for the plain 204 case.
+ */
+export async function apiDelete<T = void>(url: string): Promise<T> {
   try {
-    await httpClient.delete(url);
+    const res = await httpClient.delete<ApiResponse<T>>(url);
+    return res.data?.data as T;
   } catch (error) {
     toApiError(error);
   }

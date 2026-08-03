@@ -15,6 +15,7 @@ import { Label, Field } from '@/components/ui/label';
 import { Alert } from '@/components/ui/alert';
 import { useStockOperation } from '@/hooks/use-inventory';
 import { ApiRequestError } from '@/lib/api/client';
+import { ApprovalSubmittedDialog } from '@/components/approval/ApprovalSubmittedDialog';
 import type { InventoryItem } from '@/types/inventory';
 
 const COPY: Record<'in' | 'out' | 'adjust', { title: string; label: string; hint?: string }> = {
@@ -34,6 +35,7 @@ export function StockOperationDialog({ open, onOpenChange, kind, item }: StockOp
   const [quantity, setQuantity] = useState('');
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [approvalSent, setApprovalSent] = useState(false);
   const mutation = useStockOperation(kind);
   const copy = COPY[kind];
 
@@ -55,18 +57,23 @@ export function StockOperationDialog({ open, onOpenChange, kind, item }: StockOp
       return;
     }
     try {
+      // Deferred: stock movements are reviewed too, so nothing changes until approval.
       await mutation.mutateAsync({ id: item!.id, body: { quantity: value, reason: reason || undefined } });
       onOpenChange(false);
+      setApprovalSent(true);
     } catch (err) {
       setError(
         err instanceof ApiRequestError && err.code === 'STOCK_INSUFFICIENT'
           ? 'Kifayət qədər stok yoxdur.'
-          : 'Əməliyyat alınmadı.',
+          : err instanceof ApiRequestError && err.code === 'ENTITY_PENDING_APPROVAL'
+            ? 'Bu məhsulun təsdiq gözləyən dəyişikliyi var — əvvəlcə o qərara alınmalıdır.'
+            : 'Əməliyyat alınmadı.',
       );
     }
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
@@ -111,5 +118,11 @@ export function StockOperationDialog({ open, onOpenChange, kind, item }: StockOp
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <ApprovalSubmittedDialog
+      open={approvalSent}
+      onOpenChange={setApprovalSent}
+      description={copy.title}
+    />
+    </>
   );
 }

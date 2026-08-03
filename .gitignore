@@ -9,6 +9,8 @@
 
 # next.js
 /.next/
+# alternate build dirs (NEXT_DIST_DIR, e.g. isolated QA dev servers)
+/.next-*/
 /out/
 
 # production
