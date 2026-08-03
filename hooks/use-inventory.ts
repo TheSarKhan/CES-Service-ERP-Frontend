@@ -13,6 +13,7 @@ import type {
   InventoryNodeRequest,
   InventoryUnitSearchParams,
   StockQuantityRequest,
+  WarrantyExtendRequest,
 } from '@/types/inventory';
 
 export const inventoryKeys = {
@@ -31,6 +32,9 @@ export const inventoryKeys = {
   itemUnit: (id: string) => ['inventory', 'item-units', 'detail', id] as const,
   unitSearch: (branchId: string | null, params: InventoryUnitSearchParams) =>
     ['inventory', 'item-units', branchId, params] as const,
+  warrantySummary: (branchId: string | null) => ['inventory', 'warranty', 'summary', branchId] as const,
+  warrantyExtensions: (target: 'items' | 'units', id: string) =>
+    ['inventory', 'warranty', target, id, 'extensions'] as const,
 };
 
 // ── Layer nodes ──────────────────────────────────────────────────────────
@@ -331,6 +335,47 @@ export function useMarkInventoryItemUnitFailed() {
     mutationFn: ({ id, failureNotes }: { id: string; failureNotes?: string }) =>
       api.markInventoryItemUnitFailed(id, failureNotes),
     onSuccess: invalidate,
+  });
+}
+
+// ── Warranty ─────────────────────────────────────────────────────────────
+
+export function useWarrantySummary() {
+  const activeBranchId = useAuthStore((s) => s.activeBranchId);
+  return useQuery({
+    queryKey: inventoryKeys.warrantySummary(activeBranchId),
+    queryFn: () => api.getWarrantySummary(),
+    enabled: Boolean(activeBranchId),
+    staleTime: 60_000,
+  });
+}
+
+export function useItemWarrantyExtensions(itemId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: inventoryKeys.warrantyExtensions('items', itemId ?? ''),
+    queryFn: () => api.getItemWarrantyExtensions(itemId as string),
+    enabled: enabled && Boolean(itemId),
+  });
+}
+
+export function useUnitWarrantyExtensions(unitId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: inventoryKeys.warrantyExtensions('units', unitId ?? ''),
+    queryFn: () => api.getUnitWarrantyExtensions(unitId as string),
+    enabled: enabled && Boolean(unitId),
+  });
+}
+
+/** Queues an extension for approval — nothing moves until a second person approves it. */
+export function useExtendWarranty(target: 'item' | 'unit') {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: WarrantyExtendRequest }) =>
+      target === 'item' ? api.extendItemWarranty(id, body) : api.extendUnitWarranty(id, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['approvals'] });
+    },
   });
 }
 

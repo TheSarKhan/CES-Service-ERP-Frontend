@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { AlertTriangle, Plus, QrCode } from 'lucide-react';
+import { AlertTriangle, Plus, QrCode, ShieldCheck } from 'lucide-react';
 import { useInventoryItemUnits, useMarkInventoryItemUnitFailed } from '@/hooks/use-inventory';
 import { Button } from '@/components/ui/button';
 import { Empty } from '@/components/ui/empty';
@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dialog';
 import { UnitStatusBadge, WarrantyStatusBadge } from '@/components/inventory/badges';
 import { formatDate } from '@/lib/utils/format';
+import { WarrantyExtendDialog } from '@/components/inventory/WarrantyExtendDialog';
 import { UnitBatchRegisterDialog } from '@/components/inventory/UnitBatchRegisterDialog';
 import { QrCodeDialog } from '@/components/inventory/QrCodeDialog';
 import type { InventoryItem, InventoryItemUnit } from '@/types/inventory';
@@ -27,6 +28,7 @@ export function ItemUnitsPanel({ item }: { item: InventoryItem }) {
   const { data: units, isLoading, isError } = useInventoryItemUnits(item.id);
   const [batchOpen, setBatchOpen] = useState(false);
   const [failingUnit, setFailingUnit] = useState<InventoryItemUnit | null>(null);
+  const [extendUnit, setExtendUnit] = useState<InventoryItemUnit | null>(null);
   const [qrUnit, setQrUnit] = useState<InventoryItemUnit | null>(null);
 
   const inStockCount = units?.filter((u) => u.status === 'IN_STOCK').length ?? 0;
@@ -82,6 +84,14 @@ export function ItemUnitsPanel({ item }: { item: InventoryItem }) {
                 >
                   <QrCode className="h-4 w-4" />
                 </button>
+                {/* Warranty lives on the unit, so extending happens here rather than on the
+                    parent product. Disposed units are past the point of it mattering. */}
+                {unit.status !== 'DISPOSED' && (
+                  <Button variant="outline" size="xs" onClick={() => setExtendUnit(unit)}>
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    Zəmanəti uzat
+                  </Button>
+                )}
                 {(unit.status === 'IN_STOCK' || unit.status === 'IN_USE') && (
                   <Button variant="danger" size="xs" onClick={() => setFailingUnit(unit)}>
                     <AlertTriangle className="h-3.5 w-3.5" />
@@ -99,6 +109,16 @@ export function ItemUnitsPanel({ item }: { item: InventoryItem }) {
 
       <UnitBatchRegisterDialog open={batchOpen} onOpenChange={setBatchOpen} item={item} />
       <MarkFailedDialog unit={failingUnit} onClose={() => setFailingUnit(null)} />
+      {extendUnit && (
+        <WarrantyExtendDialog
+          open={Boolean(extendUnit)}
+          onOpenChange={(open) => !open && setExtendUnit(null)}
+          target="unit"
+          id={extendUnit.id}
+          label={extendUnit.serialNumber}
+          currentEndDate={extendUnit.warrantyEndDate}
+        />
+      )}
       {qrUnit && (
         <QrCodeDialog
           open={Boolean(qrUnit)}

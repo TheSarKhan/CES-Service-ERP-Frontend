@@ -17,7 +17,7 @@ const WARRANTY_VARIANT: Record<WarrantyStatus, BadgeVariant> = {
 
 export function WarrantyStatusBadge({ status }: { status: WarrantyStatus }) {
   return (
-    <Badge variant={WARRANTY_VARIANT[status]} size="sm" dot>
+    <Badge variant={WARRANTY_VARIANT[status]} size="sm">
       {WARRANTY_LABEL[status]}
     </Badge>
   );

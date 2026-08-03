@@ -70,9 +70,7 @@ export default function RolesPage() {
       setDeleteError(
         error instanceof ApiRequestError && error.code === 'ROLE_HAS_ACTIVE_USERS'
           ? 'Bu rol istifadəçilərə təyin olunub — əvvəlcə onlardan geri alın.'
-          : error instanceof ApiRequestError && error.code === 'SYSTEM_ROLE_PROTECTED'
-            ? 'Bu sistem roludur və silinə bilməz.'
-            : 'Rol silinmədi.',
+          : 'Rol silinmədi.',
       );
     }
   }
@@ -153,7 +151,7 @@ export default function RolesPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <Badge variant={role.isActive ? 'ok' : 'mute'} dot>
+                          <Badge variant={role.isActive ? 'ok' : 'mute'}>
                             {role.isActive ? 'Aktiv' : 'Deaktiv'}
                           </Badge>
                           {role.isSystem && (
@@ -166,33 +164,29 @@ export default function RolesPage() {
                       </TableCell>
                       <TableCell className="r">
                         <div className="flex items-center justify-end gap-0.5">
-                          {/* System roles are refused by the API, so the actions aren't offered
-                              at all rather than failing after the click. */}
-                          {!role.isSystem && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => setEditingRole(role)}
-                                className="btn btn-ghost btn-icon"
-                                aria-label="Rolu redaktə et"
-                                title="Redaktə et"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setDeleteError(null);
-                                  setDeletingRole(role);
-                                }}
-                                className="btn btn-ghost btn-icon"
-                                aria-label="Rolu sil"
-                                title="Sil"
-                              >
-                                <Trash2 className="h-4 w-4 text-danger" />
-                              </button>
-                            </>
-                          )}
+                          {/* Seeded ("Sistem") roles are editable too — the badge only records
+                              where the role came from, it doesn't lock it. */}
+                          <button
+                            type="button"
+                            onClick={() => setEditingRole(role)}
+                            className="btn btn-ghost btn-icon"
+                            aria-label="Rolu redaktə et"
+                            title="Redaktə et"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDeleteError(null);
+                              setDeletingRole(role);
+                            }}
+                            className="btn btn-ghost btn-icon"
+                            aria-label="Rolu sil"
+                            title="Sil"
+                          >
+                            <Trash2 className="h-4 w-4 text-danger" />
+                          </button>
                           <button
                             type="button"
                             onClick={() => toggleExpand(role.id)}

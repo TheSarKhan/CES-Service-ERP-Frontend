@@ -11,6 +11,7 @@ import { Pagination } from '@/components/ui/pagination';
 import { UnitStatusBadge, WarrantyStatusBadge } from '@/components/inventory/badges';
 import { ItemDetailDialog } from '@/components/inventory/ItemDetailDialog';
 import { formatDate } from '@/lib/utils/format';
+import { WarrantyExpiryBand } from '@/components/inventory/WarrantyExpiryBand';
 import type { InventoryUnitStatus } from '@/types/inventory';
 
 const PAGE_SIZE = 20;
@@ -48,6 +49,8 @@ export function WarrantySearchPanel() {
           Seriya nömrəsi, məhsul adı/SKU və ya status üzrə bütün fərdi vahidləri axtarın
         </p>
       </div>
+
+      <WarrantyExpiryBand />
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Input

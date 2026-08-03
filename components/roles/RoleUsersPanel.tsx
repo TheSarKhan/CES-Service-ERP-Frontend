@@ -42,7 +42,7 @@ export function RoleUsersPanel({ roleId }: { roleId: string }) {
                 <div className="truncate text-[13.5px] font-semibold">{user.fullName}</div>
                 <div className="truncate text-xs text-muted-foreground">{user.email}</div>
               </div>
-              <Badge variant={user.isActive ? 'ok' : 'mute'} size="sm" dot>
+              <Badge variant={user.isActive ? 'ok' : 'mute'} size="sm">
                 {user.isActive ? 'Aktiv' : 'Deaktiv'}
               </Badge>
             </li>

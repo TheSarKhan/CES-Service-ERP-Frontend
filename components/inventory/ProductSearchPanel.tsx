@@ -186,7 +186,11 @@ export function ProductSearchPanel() {
               {items.map((item) => (
                 <tr key={item.id} onClick={() => setSelectedItemId(item.id)} className="cursor-pointer">
                   <td>
-                    <ItemNameCell name={item.name} imageUrl={item.attributes?.sekil as string | undefined} />
+                    <ItemNameCell
+                        name={item.name}
+                        imageUrl={item.attributes?.sekil as string | undefined}
+                        warrantyStatus={item.warrantyStatus}
+                      />
                   </td>
                   {SYSTEM_FIELD_COLUMNS.map((col) => (
                     <td key={col.key}>{renderAttributeValue(col.type, item.attributes?.[col.key])}</td>

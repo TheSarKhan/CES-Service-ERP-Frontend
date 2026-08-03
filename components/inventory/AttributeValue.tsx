@@ -1,5 +1,6 @@
-import { Package } from 'lucide-react';
-import type { InventoryFieldType } from '@/types/inventory';
+import { Package, ShieldAlert } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import type { InventoryFieldType, WarrantyStatus } from '@/types/inventory';
 
 /**
  * Read-only rendering of one dynamic-field value, shared by any view that shows item attributes.
@@ -66,8 +67,37 @@ export function renderAttributeValue(
   return <span className={variant === 'detail' ? 'whitespace-pre-wrap' : undefined}>{String(value)}</span>;
 }
 
+/**
+ * Warning pill for a warranty that needs attention. Rendered only for EXPIRING_SOON / EXPIRED —
+ * a healthy or absent warranty gets nothing, so the mark stays meaningful in a long table.
+ */
+export function WarrantyWarning({ status }: { status: WarrantyStatus | undefined }) {
+  if (status !== 'EXPIRING_SOON' && status !== 'EXPIRED') return null;
+  const expired = status === 'EXPIRED';
+  return (
+    <span
+      title={expired ? 'Zəmanət bitib' : 'Zəmanət bitmək üzrədir'}
+      className={cn(
+        'pill sm shrink-0',
+        expired ? 'p-danger' : 'p-warn',
+      )}
+    >
+      <ShieldAlert className="h-3 w-3" />
+      {expired ? 'Zəmanət bitib' : 'Bitmək üzrə'}
+    </span>
+  );
+}
+
 /** "Ad" column cell — the product photo (Şəkil system field) shown inline with its name. */
-export function ItemNameCell({ name, imageUrl }: { name: string; imageUrl?: string | null }) {
+export function ItemNameCell({
+  name,
+  imageUrl,
+  warrantyStatus,
+}: {
+  name: string;
+  imageUrl?: string | null;
+  warrantyStatus?: WarrantyStatus;
+}) {
   return (
     <div className="flex items-center gap-2">
       {imageUrl ? (
@@ -79,6 +109,7 @@ export function ItemNameCell({ name, imageUrl }: { name: string; imageUrl?: stri
         </div>
       )}
       <span className="font-semibold">{name}</span>
+      <WarrantyWarning status={warrantyStatus} />
     </div>
   );
 }

@@ -15,7 +15,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Label, Field, FieldError } from '@/components/ui/label';
+import { ShieldCheck } from 'lucide-react';
+import { Label, Field, FieldError, FieldHint } from '@/components/ui/label';
 import { Alert } from '@/components/ui/alert';
 import { DynamicFieldInput } from '@/components/inventory/DynamicFieldInput';
 import {
@@ -37,6 +38,13 @@ const itemFormSchema = z.object({
   quantity: z.coerce.number().min(0, 'Mənfi ola bilməz'),
   purchasePrice: z.coerce.number().min(0, 'Mənfi ola bilməz'),
   isSerialized: z.boolean().optional(),
+  // Empty string -> undefined so an untouched warranty field stays null rather than becoming 0.
+  warrantyMonths: z.preprocess(
+    (v) => (v === '' || v === null ? undefined : v),
+    z.coerce.number().int().min(0, 'Mənfi ola bilməz').optional(),
+  ),
+  warrantyStartDate: z.string().optional(),
+  warrantyEndDate: z.string().optional(),
   notes: z.string().max(2000).optional(),
 });
 
@@ -86,6 +94,9 @@ export function ItemFormDialog({
       quantity: 0,
       purchasePrice: 0,
       isSerialized: false,
+      warrantyMonths: undefined,
+      warrantyStartDate: '',
+      warrantyEndDate: '',
       notes: '',
     },
   });
@@ -96,6 +107,7 @@ export function ItemFormDialog({
     [categories, selectedCategoryId],
   );
 
+  const watchIsSerialized = watch('isSerialized');
   const currentUnit = watch('unit');
   const unitOptions = useMemo(
     () => (currentUnit && !UNIT_OPTIONS.includes(currentUnit) ? [currentUnit, ...UNIT_OPTIONS] : UNIT_OPTIONS),
@@ -116,6 +128,9 @@ export function ItemFormDialog({
         quantity: editingItem.quantity,
         purchasePrice: editingItem.purchasePrice,
         isSerialized: editingItem.isSerialized,
+        warrantyMonths: editingItem.warrantyMonths ?? undefined,
+        warrantyStartDate: editingItem.warrantyStartDate ?? '',
+        warrantyEndDate: editingItem.warrantyEndDate ?? '',
         notes: editingItem.notes ?? '',
       });
       setAttributes(editingItem.attributes ?? {});
@@ -130,6 +145,9 @@ export function ItemFormDialog({
         quantity: 0,
         purchasePrice: 0,
         isSerialized: false,
+        warrantyMonths: undefined,
+        warrantyStartDate: '',
+        warrantyEndDate: '',
         notes: '',
       });
       setAttributes({});
@@ -159,6 +177,9 @@ export function ItemFormDialog({
       purchasePrice: values.purchasePrice,
       isSerialized: values.isSerialized,
       attributes,
+      warrantyMonths: values.warrantyMonths ?? null,
+      warrantyStartDate: values.warrantyStartDate || null,
+      warrantyEndDate: values.warrantyEndDate || null,
       notes: values.notes || null,
     };
 
@@ -298,6 +319,55 @@ export function ItemFormDialog({
                 Seriya nömrəli / zəmanətli (fərdi vahidlər)
               </Checkbox>
             </Field>
+          </div>
+
+          {/* Warranty means two different things depending on the item, so the copy changes with
+              it: on a serialized item the months are only a default for its units, which each
+              carry their own dates. */}
+          <div className="mt-2 rounded-lg border border-line p-3">
+            <div className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+              <ShieldCheck className="h-3.5 w-3.5 text-gold" />
+              Zəmanət
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Field className="mb-0">
+                <Label htmlFor="item-warranty-months">Müddət (ay)</Label>
+                <Input
+                  id="item-warranty-months"
+                  type="number"
+                  min="0"
+                  placeholder="12"
+                  error={Boolean(errors.warrantyMonths)}
+                  {...register('warrantyMonths')}
+                />
+                {errors.warrantyMonths ? (
+                  <FieldError>{errors.warrantyMonths.message}</FieldError>
+                ) : (
+                  <FieldHint>
+                    {watchIsSerialized
+                      ? 'Yeni seriya nömrəsi qeydə alınanda zəmanət bu müddətdən hesablanacaq.'
+                      : 'Başlanğıc tarixdən etibarən. Bitmə tarixi boşdursa buradan hesablanır.'}
+                  </FieldHint>
+                )}
+              </Field>
+              <Field className="mb-0">
+                <Label htmlFor="item-warranty-start">Başlanğıc tarixi</Label>
+                <Input id="item-warranty-start" type="date" {...register('warrantyStartDate')} />
+              </Field>
+              {!watchIsSerialized && (
+                <Field className="mb-0">
+                  <Label htmlFor="item-warranty-end">Bitmə tarixi</Label>
+                  <Input id="item-warranty-end" type="date" {...register('warrantyEndDate')} />
+                  <FieldHint>Yazılsa, müddətdən hesablanan tarixi əvəz edir.</FieldHint>
+                </Field>
+              )}
+            </div>
+            {watchIsSerialized && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Seriyalı məhsulda zəmanət hər vahidin üzərindədir — bitmə tarixi vahid səviyyəsində
+                saxlanılır və ayrıca dəyişdirilə bilər.
+              </p>
+            )}
           </div>
 
           {selectedCategory &&

@@ -103,6 +103,13 @@ export interface InventoryItem {
   purchasePrice: number;
   isSerialized: boolean;
   attributes: Record<string, unknown>;
+  /** Warranty length in months. On a serialized item this is the default for its new units. */
+  warrantyMonths: number | null;
+  warrantyStartDate: string | null;
+  /** Only set for non-serialized items — a serialized item's warranty lives on each unit. */
+  warrantyEndDate: string | null;
+  /** Derived server-side; always NONE for serialized items, whose units carry the real dates. */
+  warrantyStatus: WarrantyStatus;
   notes: string | null;
   isActive: boolean;
   createdAt: string;
@@ -120,6 +127,9 @@ export interface InventoryItemRequest {
   purchasePrice: number;
   isSerialized?: boolean;
   attributes?: Record<string, unknown>;
+  warrantyMonths?: number | null;
+  warrantyStartDate?: string | null;
+  warrantyEndDate?: string | null;
   notes?: string | null;
   isActive?: boolean;
 }
@@ -193,4 +203,41 @@ export interface InventoryUnitSearchParams {
   size?: number;
   sort?: string;
   dir?: 'asc' | 'desc';
+}
+
+/** Target of a warranty extension — a whole product, or one serialized unit of it. */
+export type WarrantyTargetType = 'INVENTORY_ITEM' | 'INVENTORY_ITEM_UNIT';
+
+/**
+ * "Zəmanəti uzat" payload. Give either `months` to add to the current end date, or an absolute
+ * `newEndDate` — the API rejects a request that gives neither.
+ */
+export interface WarrantyExtendRequest {
+  months?: number;
+  newEndDate?: string;
+  reason?: string;
+}
+
+/** One applied extension. Written only after approval, so every row actually took effect. */
+export interface WarrantyExtension {
+  id: string;
+  targetType: WarrantyTargetType;
+  targetId: string;
+  targetLabel: string | null;
+  previousEndDate: string | null;
+  newEndDate: string;
+  monthsAdded: number | null;
+  reason: string | null;
+  createdBy: string | null;
+  createdAt: string;
+}
+
+/** Counts behind the expiry badge and dashboard card. */
+export interface WarrantySummary {
+  expiringSoonItems: number;
+  expiringSoonUnits: number;
+  expiredItems: number;
+  expiredUnits: number;
+  expiringSoonTotal: number;
+  expiredTotal: number;
 }

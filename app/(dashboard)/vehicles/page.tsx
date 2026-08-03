@@ -148,7 +148,7 @@ export default function VehiclesPage() {
                     {vehicle.plate_number ?? '—'}
                   </TableCell>
                   <TableCell className="r">
-                    <Badge variant={STATUS_VARIANT[vehicle.status]} dot>
+                    <Badge variant={STATUS_VARIANT[vehicle.status]}>
                       {STATUS_LABEL[vehicle.status]}
                     </Badge>
                   </TableCell>

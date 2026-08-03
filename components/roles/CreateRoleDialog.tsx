@@ -20,6 +20,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label, Field, FieldError, FieldHint } from '@/components/ui/label';
 import { Alert } from '@/components/ui/alert';
 import { PermissionMatrixEditor } from '@/components/roles/PermissionMatrixEditor';
+import { StepChip } from '@/components/roles/StepChip';
 import { useCreateRole, useAssignPermissions, usePermissionCatalog } from '@/hooks/use-roles';
 import { ApiRequestError } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -36,34 +37,6 @@ const roleFormSchema = z.object({
 });
 
 type RoleFormValues = z.infer<typeof roleFormSchema>;
-
-function StepChip({
-  n,
-  label,
-  state,
-}: {
-  n: number;
-  label: string;
-  state: 'done' | 'on' | 'todo';
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <span
-        className={cn(
-          'grid h-7 w-7 place-items-center rounded-full font-mono text-[13px] font-bold',
-          state === 'done' && 'bg-graphite text-gold',
-          state === 'on' && 'bg-gold text-white ring-4 ring-gold-100',
-          state === 'todo' && 'bg-graphite-50 text-muted-foreground',
-        )}
-      >
-        {n}
-      </span>
-      <span className={cn('text-[13.5px] font-bold', state === 'todo' && 'text-muted-foreground')}>
-        {label}
-      </span>
-    </div>
-  );
-}
 
 /**
  * "Yeni rol" flow (SRS M16.4): step 1 creates the bare role, step 2 shows the

@@ -100,7 +100,11 @@ function CategorySection({
                 {items.map((item) => (
                   <tr key={item.id} onClick={() => onSelectItem(item.id)} className="cursor-pointer">
                     <td>
-                      <ItemNameCell name={item.name} imageUrl={item.attributes?.sekil as string | undefined} />
+                      <ItemNameCell
+                        name={item.name}
+                        imageUrl={item.attributes?.sekil as string | undefined}
+                        warrantyStatus={item.warrantyStatus}
+                      />
                     </td>
                     <td className="mono">{item.sku}</td>
                     <td className="mono text-muted-foreground">{item.barcode ?? '—'}</td>

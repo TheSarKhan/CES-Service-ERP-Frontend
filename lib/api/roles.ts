@@ -59,6 +59,11 @@ export async function assignPermissions(
   return apiPost<Role>(`/roles/${id}/permissions`, body);
 }
 
+/** DELETE /api/v1/roles/{id}/permissions/{permissionId} — revoke a single permission. */
+export async function removeRolePermission(id: string, permissionId: string): Promise<Role> {
+  return apiDelete<Role>(`/roles/${id}/permissions/${permissionId}`);
+}
+
 /** GET /api/v1/roles/{id}/users — users currently holding a role. */
 export async function getRoleUsers(id: string): Promise<RoleUser[]> {
   return apiGet<RoleUser[]>(`/roles/${id}/users`);

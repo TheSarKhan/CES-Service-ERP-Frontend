@@ -27,8 +27,6 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   variant?: BadgeVariant;
   /** Smaller pill (kit `.pill.sm`). */
   size?: 'sm' | 'default';
-  /** Render the leading status dot (kit `.pill .d`). */
-  dot?: boolean;
 }
 
 /** Status pill (kit `.pill`). */
@@ -36,7 +34,6 @@ function Badge({
   className,
   variant = 'mute',
   size = 'default',
-  dot = false,
   children,
   ...props
 }: BadgeProps) {
@@ -50,7 +47,6 @@ function Badge({
       )}
       {...props}
     >
-      {dot && <span className="d" aria-hidden />}
       {children}
     </span>
   );

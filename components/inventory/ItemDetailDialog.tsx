@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
+import { Tabs } from '@/components/ui/tabs';
 import {
   useDeleteInventoryItem,
   useInventoryCategories,
@@ -35,6 +36,7 @@ import { ItemUnitsPanel } from '@/components/inventory/ItemUnitsPanel';
 import { QrCodeDialog } from '@/components/inventory/QrCodeDialog';
 import { renderAttributeValue } from '@/components/inventory/AttributeValue';
 import { ApprovalSubmittedDialog } from '@/components/approval/ApprovalSubmittedDialog';
+import { ItemWarrantySection } from '@/components/inventory/ItemWarrantySection';
 import type { InventoryFieldType } from '@/types/inventory';
 
 export interface ItemDetailDialogProps {
@@ -68,6 +70,7 @@ export function ItemDetailDialog({ open, onOpenChange, itemId }: ItemDetailDialo
   const [stockKind, setStockKind] = useState<'in' | 'out' | 'adjust' | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [approvalSent, setApprovalSent] = useState(false);
+  const [tab, setTab] = useState('umumi');
 
   // Hook order must stay stable, so this runs before the early return — it self-disables on null.
   const { data: nodePath } = useInventoryNodePath(item?.nodeId ?? null, open && Boolean(item));
@@ -75,6 +78,16 @@ export function ItemDetailDialog({ open, onOpenChange, itemId }: ItemDetailDialo
   if (!item) return null;
   const category = categories?.find((c) => c.id === item.categoryId);
   const fields = (category?.fields ?? []).filter((f) => f.isVisible);
+
+  // Tab siyahısı məzmuna görə qurulur: boş tab göstərmək istifadəçini aldadır.
+  const tabItems = [
+    { key: 'umumi', label: 'Ümumi' },
+    ...(fields.length > 0 ? [{ key: 'saheler', label: 'Sahələr' }] : []),
+    { key: 'zemanet', label: 'Zəmanət' },
+    ...(item.isSerialized ? [{ key: 'vahidler', label: 'Vahidlər' }] : []),
+  ];
+  // Seçilmiş tab siyahıdan çıxıbsa (məsələn sahələr silinib) ilk taba qayıdırıq.
+  const activeTab = tabItems.some((t) => t.key === tab) ? tab : 'umumi';
 
   async function handleDelete() {
     setDeleteError(null);
@@ -113,6 +126,10 @@ export function ItemDetailDialog({ open, onOpenChange, itemId }: ItemDetailDialo
             </div>
           )}
 
+          <Tabs items={tabItems} value={activeTab} onChange={setTab} className="mb-4" />
+
+          {activeTab === 'umumi' && (
+          <>
           <div className="mb-4 grid grid-cols-2 gap-3 rounded-lg border border-line p-3 md:grid-cols-4">
             <DetailRow label="Barkod">
               <span className="mono">{item.barcode ?? '—'}</span>
@@ -139,11 +156,24 @@ export function ItemDetailDialog({ open, onOpenChange, itemId }: ItemDetailDialo
             </div>
           </div>
 
-          {fields.length > 0 && (
+          <div className="mb-4">
+            <div className="text-xs text-muted-foreground">Qeyd</div>
+            <div className="mt-0.5 whitespace-pre-wrap text-sm">
+              {item.notes ? item.notes : <span className="text-muted-foreground">—</span>}
+            </div>
+          </div>
+
+          <div className="mb-4 flex flex-wrap gap-x-4 gap-y-1 border-t border-line pt-3 text-xs text-muted-foreground">
+            <span>Yaradılıb: {formatDateTime(item.createdAt)}</span>
+            <span>Yenilənib: {formatDateTime(item.updatedAt)}</span>
+          </div>
+          </>
+          )}
+
+          {activeTab === 'zemanet' && <ItemWarrantySection item={item} />}
+
+          {activeTab === 'saheler' && fields.length > 0 && (
             <div className="mb-4 rounded-lg border border-line p-3">
-              <div className="mb-3 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                Sahələr
-              </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {fields.map((field) => (
                   <div key={field.id} className={isWideField(field.fieldType) ? 'sm:col-span-2' : ''}>
@@ -157,19 +187,7 @@ export function ItemDetailDialog({ open, onOpenChange, itemId }: ItemDetailDialo
             </div>
           )}
 
-          <div className="mb-4">
-            <div className="text-xs text-muted-foreground">Qeyd</div>
-            <div className="mt-0.5 whitespace-pre-wrap text-sm">
-              {item.notes ? item.notes : <span className="text-muted-foreground">—</span>}
-            </div>
-          </div>
-
-          <div className="mb-4 flex flex-wrap gap-x-4 gap-y-1 border-t border-line pt-3 text-xs text-muted-foreground">
-            <span>Yaradılıb: {formatDateTime(item.createdAt)}</span>
-            <span>Yenilənib: {formatDateTime(item.updatedAt)}</span>
-          </div>
-
-          {item.isSerialized && <ItemUnitsPanel item={item} />}
+          {activeTab === 'vahidler' && item.isSerialized && <ItemUnitsPanel item={item} />}
 
           {/* Actions live at the very bottom so the popup reads as information first, tools after. */}
           <div className="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">

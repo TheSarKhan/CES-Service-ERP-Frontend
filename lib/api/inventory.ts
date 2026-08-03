@@ -17,6 +17,9 @@ import type {
   InventoryNodeRequest,
   InventoryUnitSearchParams,
   StockQuantityRequest,
+  WarrantyExtendRequest,
+  WarrantyExtension,
+  WarrantySummary,
 } from '@/types/inventory';
 
 /**
@@ -160,6 +163,36 @@ export async function stockOutInventoryItem(id: string, body: StockQuantityReque
 
 export async function adjustInventoryItem(id: string, body: StockQuantityRequest): Promise<ApprovalRequest> {
   return apiPost<ApprovalRequest>(`/inventory/items/${id}/adjust`, body);
+}
+
+// ── Warranty ─────────────────────────────────────────────────────────────
+
+/** Counts of warranties expiring soon / already expired, across items and units. */
+export async function getWarrantySummary(): Promise<WarrantySummary> {
+  return apiGet<WarrantySummary>('/inventory/warranty/summary');
+}
+
+export async function getItemWarrantyExtensions(itemId: string): Promise<WarrantyExtension[]> {
+  return apiGet<WarrantyExtension[]>(`/inventory/warranty/items/${itemId}/extensions`);
+}
+
+export async function getUnitWarrantyExtensions(unitId: string): Promise<WarrantyExtension[]> {
+  return apiGet<WarrantyExtension[]>(`/inventory/warranty/units/${unitId}/extensions`);
+}
+
+/** Extending is reviewed like any other consequential change — this only queues the request. */
+export async function extendItemWarranty(
+  itemId: string,
+  body: WarrantyExtendRequest,
+): Promise<ApprovalRequest> {
+  return apiPost<ApprovalRequest>(`/inventory/warranty/items/${itemId}/extend`, body);
+}
+
+export async function extendUnitWarranty(
+  unitId: string,
+  body: WarrantyExtendRequest,
+): Promise<ApprovalRequest> {
+  return apiPost<ApprovalRequest>(`/inventory/warranty/units/${unitId}/extend`, body);
 }
 
 // ── Serialized units / warranty ─────────────────────────────────────────

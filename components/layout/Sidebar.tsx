@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
+import { useWarrantySummary } from '@/hooks/use-inventory';
 import { NAV_GROUPS, type NavModule } from '@/lib/constants/modules';
 import { LogoTile } from './LogoTile';
 import { cn } from '@/lib/utils';
@@ -20,6 +21,9 @@ export function Sidebar() {
   const pathname = usePathname();
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  // Warranties needing attention, surfaced as a count so it's visible without opening the page.
+  const { data: warranty } = useWarrantySummary();
+  const warrantyAlerts = (warranty?.expiringSoonTotal ?? 0) + (warranty?.expiredTotal ?? 0);
 
   const canSee = (module: NavModule): boolean =>
     module.permission === null || hasPermission(module.permission);
@@ -96,6 +100,11 @@ export function Sidebar() {
                               >
                                 <ChildIcon className="h-4 w-4 shrink-0" />
                                 <span className="truncate">{child.label}</span>
+                                {child.key === 'M19_WAREHOUSE_WARRANTY' && warrantyAlerts > 0 && (
+                                  <span className="ml-auto shrink-0 rounded-full bg-warn px-1.5 py-0.5 text-[11px] font-bold leading-none text-graphite">
+                                    {warrantyAlerts}
+                                  </span>
+                                )}
                               </Link>
                             );
                           })}

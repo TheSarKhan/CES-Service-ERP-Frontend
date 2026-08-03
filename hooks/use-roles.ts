@@ -9,6 +9,7 @@ import {
   getRolePermissions,
   getRoles,
   getRoleUsers,
+  removeRolePermission,
   updateRole,
 } from '@/lib/api/roles';
 import { useAuthStore } from '@/store/auth-store';
@@ -82,7 +83,45 @@ export function useCreateRole() {
   });
 }
 
-/** Rename / re-code / (de)activate a role. Rejected by the API for system roles. */
+/**
+ * Applies a whole permission selection at once.
+ *
+ * The API only exposes "add these" and "revoke that one", so syncing a matrix means diffing the
+ * new selection against what the role already had and issuing both halves. Revocations run first
+ * so a role never momentarily holds more than the user chose.
+ */
+export function useSyncRolePermissions() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      roleId,
+      selectedIds,
+      currentIds,
+    }: {
+      roleId: string;
+      selectedIds: string[];
+      currentIds: string[];
+    }) => {
+      const selected = new Set(selectedIds);
+      const current = new Set(currentIds);
+      const toRemove = currentIds.filter((id) => !selected.has(id));
+      const toAdd = selectedIds.filter((id) => !current.has(id));
+
+      for (const permissionId of toRemove) {
+        await removeRolePermission(roleId, permissionId);
+      }
+      if (toAdd.length > 0) {
+        await assignPermissions(roleId, { permissionIds: toAdd });
+      }
+    },
+    onSuccess: (_r, variables) => {
+      queryClient.invalidateQueries({ queryKey: roleKeys.all });
+      queryClient.invalidateQueries({ queryKey: roleKeys.permissions(variables.roleId) });
+    },
+  });
+}
+
+/** Rename / re-code / (de)activate a role. */
 export function useUpdateRole() {
   const queryClient = useQueryClient();
   return useMutation({

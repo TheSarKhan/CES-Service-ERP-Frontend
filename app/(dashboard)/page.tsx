@@ -17,6 +17,7 @@ import {
   Tooltip,
 } from 'recharts';
 import { KpiGrid, KpiCard } from '@/components/ui/kpi-card';
+import { WarrantyDashboardCard } from '@/components/inventory/WarrantyDashboardCard';
 
 interface Kpi {
   label: string;
@@ -132,6 +133,8 @@ export default function DashboardPage() {
           );
         })}
       </KpiGrid>
+
+      <WarrantyDashboardCard />
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Chart card */}
