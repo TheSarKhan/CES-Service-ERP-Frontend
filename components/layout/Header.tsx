@@ -1,6 +1,7 @@
 'use client';
 
-import { Bell, ChevronDown, LogOut } from 'lucide-react';
+import { Bell, ChevronDown, LogOut, UserRound } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { BranchSwitcher } from './BranchSwitcher';
 import {
@@ -18,6 +19,7 @@ import { Avatar, toInitials } from '@/components/ui/avatar';
  * with avatar (kit `.av`) and logout.
  */
 export function Header() {
+  const router = useRouter();
   const { user, logout } = useAuth();
 
   return (
@@ -57,6 +59,11 @@ export function Header() {
                 </span>
               </div>
             </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => router.push('/profile')}>
+              <UserRound className="h-4 w-4" />
+              <span>Profilim</span>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onSelect={() => void logout()}

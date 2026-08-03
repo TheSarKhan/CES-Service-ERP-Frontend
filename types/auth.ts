@@ -27,6 +27,8 @@ export interface User {
   branches: Branch[];
   roles: Role[];
   permissions: Permission[];
+  /** True while the account still holds an admin-issued temporary password. */
+  must_change_password?: boolean;
 }
 
 /** POST /api/v1/auth/login request body (SRS §4.2). */

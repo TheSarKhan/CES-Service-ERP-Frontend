@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
+import { ChangePasswordDialog } from '@/components/users/ChangePasswordDialog';
 
 /**
  * Authenticated shell: sidebar + header + content. Guards auth on the client as
@@ -21,6 +22,10 @@ export default function DashboardLayout({
   const hasHydrated = useAuthStore((s) => s.hasHydrated);
 
   const isAuthenticated = Boolean(accessToken && user);
+  // Set at login. Until it's cleared every screen sits behind a dialog that can't be dismissed —
+  // the account is still usable by whoever issued the temporary password.
+  const clearMustChangePassword = useAuthStore((s) => s.clearMustChangePassword);
+  const mustChangePassword = Boolean(user?.must_change_password);
 
   useEffect(() => {
     if (hasHydrated && !isAuthenticated) {
@@ -43,6 +48,13 @@ export default function DashboardLayout({
         <Header />
         <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>
+
+      <ChangePasswordDialog
+        open={mustChangePassword}
+        onOpenChange={() => {}}
+        forced
+        onChanged={clearMustChangePassword}
+      />
     </div>
   );
 }

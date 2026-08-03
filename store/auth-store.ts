@@ -44,6 +44,12 @@ export interface AuthState {
   setTokens: (accessToken: string, refreshToken: string) => void;
   /** Update the active branch (after a successful switch-branch). */
   setActiveBranch: (branchId: string) => void;
+  /**
+   * Clears the forced-password-change flag on the stored user after they set their own password.
+   * Without it the flag survives in persisted state and the dialog reappears on every reload,
+   * even though the server has already cleared it.
+   */
+  clearMustChangePassword: () => void;
   /** Wipe all auth state + cookies. */
   logout: () => void;
 }
@@ -94,6 +100,12 @@ export const useAuthStore = create<AuthState>()(
       setTokens: (accessToken, refreshToken) => {
         setCookie(ACCESS_TOKEN_COOKIE, accessToken, ACCESS_TOKEN_MAX_AGE);
         set({ accessToken, refreshToken });
+      },
+
+      clearMustChangePassword: () => {
+        const user = get().user;
+        if (!user) return;
+        set({ user: { ...user, must_change_password: false } });
       },
 
       setActiveBranch: (branchId) => {

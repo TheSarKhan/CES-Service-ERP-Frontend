@@ -218,6 +218,7 @@ export const NAV_GROUPS: NavGroup[] = [
         href: '/users',
         icon: UserCog,
         permission: 'USER_READ',
+        built: true,
       },
       {
         key: 'M16_ROLES',
