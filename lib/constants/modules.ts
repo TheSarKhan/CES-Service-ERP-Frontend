@@ -16,6 +16,9 @@ import {
   ShieldCheck,
   ScrollText,
   Settings,
+  Settings2,
+  SearchCheck,
+  Search,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -36,10 +39,12 @@ export interface NavModule {
   permission: string | null;
   /**
    * Whether the route has real content yet, vs. still being a
-   * `ModulePlaceholder` stub. Unbuilt modules render locked (non-navigable)
-   * in the sidebar instead of linking to an empty page.
+   * `ModulePlaceholder` stub. Unbuilt modules are hidden from the sidebar
+   * entirely until they're built (see `Sidebar`).
    */
   built?: boolean;
+  /** Sub-items rendered as a collapsible dropdown under this entry. */
+  children?: NavModule[];
 }
 
 /** A labelled group of navigation entries. */
@@ -76,7 +81,6 @@ export const NAV_GROUPS: NavGroup[] = [
         href: '/vehicles',
         icon: Truck,
         permission: 'VEHICLE_READ',
-        built: true,
       },
       {
         key: 'M04_CUSTOMERS',
@@ -101,11 +105,45 @@ export const NAV_GROUPS: NavGroup[] = [
       },
       {
         key: 'M19_WAREHOUSE',
-        label: 'Anbar & Ehtiyat hissələri',
+        label: 'Anbar & Ehtiyat',
         href: '/warehouse',
         icon: Warehouse,
         permission: 'WH_READ',
         built: true,
+        children: [
+          {
+            key: 'M19_WAREHOUSE_MAIN',
+            label: 'Anbar',
+            href: '/warehouse',
+            icon: Warehouse,
+            permission: 'WH_READ',
+            built: true,
+          },
+          {
+            key: 'M19_WAREHOUSE_CONFIG',
+            label: 'Anbar Konfiqurasiya',
+            href: '/warehouse/configuration',
+            icon: Settings2,
+            permission: 'WH_READ',
+            built: true,
+          },
+          {
+            key: 'M19_WAREHOUSE_SEARCH',
+            label: 'Məhsul axtarışı',
+            href: '/warehouse/search',
+            icon: Search,
+            permission: 'WH_READ',
+            built: true,
+          },
+          {
+            key: 'M19_WAREHOUSE_WARRANTY',
+            label: 'Zəmanət axtarışı',
+            href: '/warehouse/warranty',
+            icon: SearchCheck,
+            permission: 'WH_READ',
+            built: true,
+          },
+        ],
       },
       {
         key: 'M18_INSPECTIONS',
@@ -200,4 +238,6 @@ export const NAV_GROUPS: NavGroup[] = [
 ];
 
 /** Flattened module list (useful for breadcrumbs / lookups). */
-export const ALL_MODULES: NavModule[] = NAV_GROUPS.flatMap((g) => g.modules);
+export const ALL_MODULES: NavModule[] = NAV_GROUPS.flatMap((g) =>
+  g.modules.flatMap((m) => (m.children ? [m, ...m.children] : [m])),
+);

@@ -1,8 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Lock } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { NAV_GROUPS, type NavModule } from '@/lib/constants/modules';
 import { LogoTile } from './LogoTile';
@@ -10,19 +11,30 @@ import { cn } from '@/lib/utils';
 
 /**
  * Left navigation using the kit's dark graphite sidebar (`.sd-*`). Hides any
- * entry the current user lacks permission for (SRS §4.4 / §M16). Active item
- * gets the gold background. Modules without real content yet (`built` unset)
- * render locked — visible for context, but not a navigable link.
+ * entry the current user lacks permission for (SRS §4.4 / §M16), and any
+ * module that isn't built yet (`built` unset) — those come back into the
+ * sidebar as they're finished, module by module. A module with `children`
+ * renders as a collapsible dropdown instead of a direct link.
  */
 export function Sidebar() {
   const pathname = usePathname();
   const hasPermission = useAuthStore((s) => s.hasPermission);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const canSee = (module: NavModule): boolean =>
     module.permission === null || hasPermission(module.permission);
 
   const isActive = (href: string): boolean =>
     pathname === href || pathname.startsWith(`${href}/`);
+
+  // Sibling child routes can share a URL prefix (e.g. /warehouse vs.
+  // /warehouse/configuration), so a child link is only active on an exact match —
+  // prefix matching would light up "Anbar" while on "Anbar Konfiqurasiya" too.
+  const isChildActive = (href: string): boolean => pathname === href;
+
+  function toggleExpanded(key: string, defaultValue: boolean) {
+    setExpanded((prev) => ({ ...prev, [key]: !(prev[key] ?? defaultValue) }));
+  }
 
   return (
     <aside className="hidden w-64 shrink-0 flex-col gap-3 self-stretch bg-graphite p-3.5 text-white md:flex">
@@ -40,7 +52,7 @@ export function Sidebar() {
       {/* Sections */}
       <nav className="flex flex-col gap-3 overflow-y-auto">
         {NAV_GROUPS.map((group) => {
-          const visible = group.modules.filter(canSee);
+          const visible = group.modules.filter(canSee).filter((m) => m.built);
           if (visible.length === 0) return null;
 
           return (
@@ -49,17 +61,46 @@ export function Sidebar() {
               {visible.map((module) => {
                 const Icon = module.icon;
 
-                if (!module.built) {
+                if (module.children) {
+                  const childrenVisible = module.children.filter(canSee).filter((m) => m.built);
+                  if (childrenVisible.length === 0) return null;
+
+                  const anyChildActive = childrenVisible.some((c) => isChildActive(c.href));
+                  const isExpanded = expanded[module.key] ?? anyChildActive;
+
                   return (
-                    <div
-                      key={module.key}
-                      className="sd-item cursor-not-allowed opacity-50"
-                      title="Tezliklə əlçatan olacaq"
-                      aria-disabled="true"
-                    >
-                      <Icon className="h-[18px] w-[18px] shrink-0" />
-                      <span className="truncate">{module.label}</span>
-                      <Lock className="ml-auto h-3.5 w-3.5 shrink-0" />
+                    <div key={module.key}>
+                      <button
+                        type="button"
+                        onClick={() => toggleExpanded(module.key, anyChildActive)}
+                        className={cn('sd-item w-full', anyChildActive && 'text-gold')}
+                      >
+                        <Icon className="h-[18px] w-[18px] shrink-0" />
+                        <span className="truncate">{module.label}</span>
+                        {isExpanded ? (
+                          <ChevronDown className="ml-auto h-4 w-4 shrink-0" />
+                        ) : (
+                          <ChevronRight className="ml-auto h-4 w-4 shrink-0" />
+                        )}
+                      </button>
+                      {isExpanded && (
+                        <div className="ml-4 mt-1 flex flex-col gap-0.5 border-l border-white/10 pl-2">
+                          {childrenVisible.map((child) => {
+                            const ChildIcon = child.icon;
+                            const active = isChildActive(child.href);
+                            return (
+                              <Link
+                                key={child.key}
+                                href={child.href}
+                                className={cn('sd-item', active && 'active')}
+                              >
+                                <ChildIcon className="h-4 w-4 shrink-0" />
+                                <span className="truncate">{child.label}</span>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   );
                 }

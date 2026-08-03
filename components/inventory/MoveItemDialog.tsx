@@ -11,7 +11,6 @@ import {
 import { Alert } from '@/components/ui/alert';
 import { NodeTree } from '@/components/inventory/NodeTree';
 import { useMoveInventoryItem } from '@/hooks/use-inventory';
-import { ApiRequestError } from '@/lib/api/client';
 import type { InventoryItem, InventoryNode } from '@/types/inventory';
 
 export interface MoveItemDialogProps {
@@ -20,7 +19,7 @@ export interface MoveItemDialogProps {
   item: InventoryItem | null;
 }
 
-/** "Məhsulu başqa yerə köçür" — browse the Layer tree and drop the item on a leaf node. */
+/** "Məhsulu başqa yerə köçür" — browse the Layer tree and drop the item on any node. */
 export function MoveItemDialog({ open, onOpenChange, item }: MoveItemDialogProps) {
   const [error, setError] = useState<string | null>(null);
   const moveItem = useMoveInventoryItem();
@@ -32,12 +31,8 @@ export function MoveItemDialog({ open, onOpenChange, item }: MoveItemDialogProps
     try {
       await moveItem.mutateAsync({ id: item!.id, nodeId: node.id });
       onOpenChange(false);
-    } catch (err) {
-      setError(
-        err instanceof ApiRequestError && err.code === 'NODE_NOT_LEAF'
-          ? 'Bu node leaf deyil — yalnız alt node-u olmayan node-lara köçürmək olar.'
-          : 'Köçürmə alınmadı.',
-      );
+    } catch {
+      setError('Köçürmə alınmadı.');
     }
   }
 
@@ -46,7 +41,9 @@ export function MoveItemDialog({ open, onOpenChange, item }: MoveItemDialogProps
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>{item.name} — köçür</DialogTitle>
-          <DialogDescription>Hədəf leaf node üzərinə klikləyin</DialogDescription>
+          <DialogDescription>
+            Hədəf node-u seçin (adına klikləyin, ya da &quot;seç&quot; düyməsini basın)
+          </DialogDescription>
         </DialogHeader>
         {error && (
           <div className="mb-3">

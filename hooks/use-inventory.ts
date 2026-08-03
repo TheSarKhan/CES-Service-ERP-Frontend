@@ -20,11 +20,13 @@ export const inventoryKeys = {
   nodeChildren: (branchId: string | null, parentId: string | undefined) =>
     ['inventory', 'nodes', branchId, parentId ?? 'root'] as const,
   node: (id: string) => ['inventory', 'nodes', 'detail', id] as const,
+  nodePath: (id: string) => ['inventory', 'nodes', 'path', id] as const,
   categories: (branchId: string | null) => ['inventory', 'categories', branchId] as const,
   category: (id: string) => ['inventory', 'categories', 'detail', id] as const,
   items: (branchId: string | null, params: InventoryItemListParams) =>
     ['inventory', 'items', branchId, params] as const,
   item: (id: string) => ['inventory', 'items', 'detail', id] as const,
+  itemCategoryIds: (nodeId: string) => ['inventory', 'items', 'category-ids', nodeId] as const,
   itemUnits: (itemId: string) => ['inventory', 'items', itemId, 'units'] as const,
   itemUnit: (id: string) => ['inventory', 'item-units', 'detail', id] as const,
   unitSearch: (branchId: string | null, params: InventoryUnitSearchParams) =>
@@ -47,6 +49,15 @@ export function useInventoryNode(id: string | null) {
     queryKey: inventoryKeys.node(id ?? ''),
     queryFn: () => api.getInventoryNode(id as string),
     enabled: Boolean(id),
+  });
+}
+
+/** Root-first ancestor chain for a node — lets a caller reconstruct/jump to its breadcrumb. */
+export function useInventoryNodePath(id: string | null, enabled = true) {
+  return useQuery({
+    queryKey: inventoryKeys.nodePath(id ?? ''),
+    queryFn: () => api.getInventoryNodePath(id as string),
+    enabled: enabled && Boolean(id),
   });
 }
 
@@ -181,12 +192,12 @@ export function useUploadInventoryImage() {
 
 // ── Items ────────────────────────────────────────────────────────────────
 
-export function useInventoryItems(params: InventoryItemListParams = {}) {
+export function useInventoryItems(params: InventoryItemListParams = {}, enabled = true) {
   const activeBranchId = useAuthStore((s) => s.activeBranchId);
   return useQuery({
     queryKey: inventoryKeys.items(activeBranchId, params),
     queryFn: () => api.getInventoryItems(params),
-    enabled: Boolean(activeBranchId),
+    enabled: enabled && Boolean(activeBranchId),
     staleTime: 15_000,
   });
 }
@@ -196,6 +207,15 @@ export function useInventoryItem(id: string | null) {
     queryKey: inventoryKeys.item(id ?? ''),
     queryFn: () => api.getInventoryItem(id as string),
     enabled: Boolean(id),
+  });
+}
+
+/** Distinct category ids present at a node — see api.getInventoryItemCategoryIds javadoc. */
+export function useInventoryItemCategoryIds(nodeId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: inventoryKeys.itemCategoryIds(nodeId ?? ''),
+    queryFn: () => api.getInventoryItemCategoryIds(nodeId as string),
+    enabled: enabled && Boolean(nodeId),
   });
 }
 

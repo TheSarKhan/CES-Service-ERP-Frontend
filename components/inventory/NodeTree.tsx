@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Folder, Pencil, Plus, QrCode, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Check, Folder, Pencil, Plus, QrCode, Trash2 } from 'lucide-react';
 import { useDeleteInventoryNode, useInventoryNodeChildren } from '@/hooks/use-inventory';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +17,11 @@ import type { InventoryNode } from '@/types/inventory';
 const INDENT_PX = 20;
 
 export interface NodeTreeProps {
-  /** 'manage' shows create/edit/delete actions; 'browse' makes leaf rows clickable via onRowClick. */
+  /**
+   * 'manage' shows create/edit/delete actions. 'browse' makes every row selectable via
+   * onRowClick — childless rows select on name-click, rows with children get an explicit
+   * "seç" button next to the name (name-click there still expands/collapses instead).
+   */
   mode: 'manage' | 'browse';
   onRowClick?: (node: InventoryNode) => void;
   selectedId?: string | null;
@@ -164,6 +168,10 @@ function NodeTreeRow({
     }
   }
 
+  // A node can hold items directly whether or not it also has children, so browse mode needs an
+  // explicit "select this one" action — name-click alone would only ever reach childless nodes.
+  const showSelectButton = mode === 'browse' && node.hasChildren;
+
   return (
     <li>
       <div
@@ -205,6 +213,17 @@ function NodeTreeRow({
         </button>
 
         <div className="flex shrink-0 items-center gap-0.5">
+          {showSelectButton && (
+            <button
+              type="button"
+              onClick={() => onRowClick?.(node)}
+              className="btn btn-ghost btn-icon"
+              aria-label="Bu node-u seç"
+              title="Bu node-u seç"
+            >
+              <Check className="h-4 w-4 text-gold" />
+            </button>
+          )}
           <button
             type="button"
             onClick={() => onRequestQr(node)}

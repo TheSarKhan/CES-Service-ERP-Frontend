@@ -206,8 +206,12 @@ export function CategoryManager() {
     setFieldError(null);
     try {
       await removeField.mutateAsync({ categoryId: selectedCategory.id, fieldId });
-    } catch {
-      setFieldError('Sahə silinmədi.');
+    } catch (err) {
+      setFieldError(
+        err instanceof ApiRequestError && err.code === 'SYSTEM_FIELD_PROTECTED'
+          ? 'Bu sistem sahəsidir və silinə bilməz.'
+          : 'Sahə silinmədi.',
+      );
     }
   }
 
@@ -377,7 +381,14 @@ export function CategoryManager() {
                               <td className="cursor-grab text-muted-foreground">
                                 <GripVertical className="h-4 w-4" />
                               </td>
-                              <td className="font-semibold">{field.label}</td>
+                              <td className="font-semibold">
+                                {field.label}
+                                {field.isSystem && (
+                                  <Badge variant="gold" size="sm" className="ml-1.5 align-middle">
+                                    Sistem
+                                  </Badge>
+                                )}
+                              </td>
                               <td>
                                 <Badge variant="mute" size="sm">
                                   {FIELD_TYPE_LABELS[field.fieldType]}
@@ -408,14 +419,16 @@ export function CategoryManager() {
                                 >
                                   <Pencil className="h-4 w-4" />
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveField(field.id)}
-                                  className="btn btn-ghost btn-icon"
-                                  aria-label="Sahəni sil"
-                                >
-                                  <Trash2 className="h-4 w-4 text-danger" />
-                                </button>
+                                {!field.isSystem && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveField(field.id)}
+                                    className="btn btn-ghost btn-icon"
+                                    aria-label="Sahəni sil"
+                                  >
+                                    <Trash2 className="h-4 w-4 text-danger" />
+                                  </button>
+                                )}
                               </td>
                             </tr>
                           ))}

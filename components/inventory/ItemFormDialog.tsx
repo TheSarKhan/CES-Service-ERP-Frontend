@@ -25,6 +25,7 @@ import {
   useUpdateInventoryItem,
 } from '@/hooks/use-inventory';
 import { ApiRequestError } from '@/lib/api/client';
+import { UNIT_OPTIONS } from '@/lib/constants/units';
 import type { InventoryItem } from '@/types/inventory';
 
 const itemFormSchema = z.object({
@@ -80,6 +81,7 @@ export function ItemFormDialog({
     handleSubmit,
     watch,
     reset,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<ItemFormValues>({
     resolver: zodResolver(itemFormSchema),
@@ -102,6 +104,12 @@ export function ItemFormDialog({
     [categories, selectedCategoryId],
   );
 
+  const currentUnit = watch('unit');
+  const unitOptions = useMemo(
+    () => (currentUnit && !UNIT_OPTIONS.includes(currentUnit) ? [currentUnit, ...UNIT_OPTIONS] : UNIT_OPTIONS),
+    [currentUnit],
+  );
+
   useEffect(() => {
     if (!open) return;
     setServerError(null);
@@ -120,12 +128,13 @@ export function ItemFormDialog({
       });
       setAttributes(editingItem.attributes ?? {});
     } else {
+      const initialCategory = categories?.find((c) => c.id === initialCategoryId);
       reset({
         categoryId: initialCategoryId ?? '',
         name: '',
         sku: '',
         barcode: '',
-        unit: '',
+        unit: initialCategory?.defaultUnit ?? '',
         quantity: 0,
         purchasePrice: 0,
         isSerialized: false,
@@ -133,11 +142,14 @@ export function ItemFormDialog({
       });
       setAttributes({});
     }
-  }, [open, editingItem, initialCategoryId, reset]);
+  }, [open, editingItem, initialCategoryId, categories, reset]);
 
   function handleCategoryChange(categoryId: string) {
     const category = categories?.find((c) => c.id === categoryId);
     setAttributes({});
+    if (category?.defaultUnit) {
+      setValue('unit', category.defaultUnit);
+    }
     return category;
   }
 
@@ -177,8 +189,6 @@ export function ItemFormDialog({
     } catch (error) {
       if (error instanceof ApiRequestError && error.code === 'DUPLICATE_SKU') {
         setServerError('Bu SKU artıq mövcuddur.');
-      } else if (error instanceof ApiRequestError && error.code === 'NODE_NOT_LEAF') {
-        setServerError('Bu node-da alt node-lar var — məhsul yalnız ən son (leaf) node-a əlavə oluna bilər.');
       } else if (error instanceof ApiRequestError && error.code === 'NODE_CATEGORY_NOT_ALLOWED') {
         setServerError('Seçilmiş kateqoriya bu node üçün icazəli deyil.');
       } else {
@@ -215,24 +225,35 @@ export function ItemFormDialog({
               <Label htmlFor="item-category" required>
                 Kateqoriya
               </Label>
-              <select
-                id="item-category"
-                className="h-11 w-full rounded-[11px] border border-line bg-white px-3 text-sm"
-                {...register('categoryId', { onChange: (e) => handleCategoryChange(e.target.value) })}
-              >
-                <option value="">— seçin —</option>
-                {availableCategories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-              {errors.categoryId && <FieldError>{errors.categoryId.message}</FieldError>}
-              {node && (node.categoryIds ?? []).length > 0 && (
-                <p className="mt-1.5 text-xs text-muted-foreground">
-                  Bu node üçün icazəli kateqoriyalarla məhdudlaşdırılıb.
-                </p>
+              {isEditing ? (
+                <>
+                  <select
+                    id="item-category"
+                    className="h-11 w-full rounded-[11px] border border-line bg-white px-3 text-sm"
+                    {...register('categoryId', { onChange: (e) => handleCategoryChange(e.target.value) })}
+                  >
+                    <option value="">— seçin —</option>
+                    {availableCategories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                  {node && (node.categoryIds ?? []).length > 0 && (
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                      Bu node üçün icazəli kateqoriyalarla məhdudlaşdırılıb.
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <input type="hidden" {...register('categoryId')} />
+                  <div className="flex h-11 items-center rounded-[11px] border border-line bg-graphite-50 px-3 text-sm font-semibold">
+                    {selectedCategory?.name ?? '—'}
+                  </div>
+                </>
               )}
+              {errors.categoryId && <FieldError>{errors.categoryId.message}</FieldError>}
             </Field>
             <Field>
               <Label htmlFor="item-name" required>
@@ -261,12 +282,18 @@ export function ItemFormDialog({
               <Label htmlFor="item-unit" required>
                 Ölçü vahidi
               </Label>
-              <Input
+              <select
                 id="item-unit"
-                placeholder={selectedCategory?.defaultUnit}
-                error={Boolean(errors.unit)}
+                className="h-11 w-full rounded-[11px] border border-line bg-white px-3 text-sm"
                 {...register('unit')}
-              />
+              >
+                <option value="">— seçin —</option>
+                {unitOptions.map((unit) => (
+                  <option key={unit} value={unit}>
+                    {unit}
+                  </option>
+                ))}
+              </select>
               {errors.unit && <FieldError>{errors.unit.message}</FieldError>}
             </Field>
             <Field>
@@ -304,25 +331,19 @@ export function ItemFormDialog({
             </Field>
           </div>
 
-          {selectedCategory && (selectedCategory.fields ?? []).length > 0 && (
-            <div className="mt-2 rounded-lg border border-line p-3">
-              <div className="mb-3 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                {selectedCategory.name} — dinamik sahələr
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                {selectedCategory.fields!.filter((f) => f.isVisible).map((field) => (
-                  <Field key={field.id}>
-                    <Label required={field.isRequired}>{field.label}</Label>
-                    <DynamicFieldInput
-                      field={field}
-                      value={attributes[field.fieldKey]}
-                      onChange={(value) => setAttributes((prev) => ({ ...prev, [field.fieldKey]: value }))}
-                    />
-                  </Field>
-                ))}
-              </div>
-            </div>
-          )}
+          {selectedCategory &&
+            selectedCategory.fields!
+              .filter((f) => f.isVisible)
+              .map((field) => (
+                <Field key={field.id} className="mt-2">
+                  <Label required={field.isRequired}>{field.label}</Label>
+                  <DynamicFieldInput
+                    field={field}
+                    value={attributes[field.fieldKey]}
+                    onChange={(value) => setAttributes((prev) => ({ ...prev, [field.fieldKey]: value }))}
+                  />
+                </Field>
+              ))}
 
           <Field className="mt-2">
             <Label htmlFor="item-notes">Qeyd</Label>

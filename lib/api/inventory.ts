@@ -39,6 +39,11 @@ export async function getInventoryNode(id: string): Promise<InventoryNode> {
   return apiGet<InventoryNode>(`/inventory/nodes/${id}`);
 }
 
+/** Root-first ancestor chain (including the node itself) — powers "jump to location". */
+export async function getInventoryNodePath(id: string): Promise<InventoryNode[]> {
+  return apiGet<InventoryNode[]>(`/inventory/nodes/${id}/path`);
+}
+
 export async function createInventoryNode(body: InventoryNodeRequest): Promise<InventoryNode> {
   return apiPost<InventoryNode>('/inventory/nodes', body);
 }
@@ -121,6 +126,11 @@ export async function getInventoryItems(
 
 export async function getInventoryItem(id: string): Promise<InventoryItem> {
   return apiGet<InventoryItem>(`/inventory/items/${id}`);
+}
+
+/** Distinct category ids actually present at a node — powers per-category section rendering. */
+export async function getInventoryItemCategoryIds(nodeId: string): Promise<string[]> {
+  return apiGet<string[]>('/inventory/items/category-ids', { nodeId });
 }
 
 export async function createInventoryItem(body: InventoryItemRequest): Promise<InventoryItem> {

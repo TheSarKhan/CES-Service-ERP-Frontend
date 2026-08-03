@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { ScanLine } from 'lucide-react';
-import { Tabs } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { TableWrap } from '@/components/ui/table';
 import {
@@ -12,29 +12,15 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { NodeTree } from '@/components/inventory/NodeTree';
 import { NodeCardBrowser } from '@/components/inventory/NodeCardBrowser';
-import { CategoryManager } from '@/components/inventory/CategoryManager';
-import { WarrantySearchPanel } from '@/components/inventory/WarrantySearchPanel';
 import { QrScanDialog } from '@/components/inventory/QrScanDialog';
 import { ItemDetailDialog } from '@/components/inventory/ItemDetailDialog';
 import { useInventoryItemUnit, useInventoryNode } from '@/hooks/use-inventory';
 import type { InventoryLookupResult } from '@/types/inventory';
 
-const TABS = [
-  { key: 'anbar', label: 'Anbar' },
-  { key: 'config', label: 'Konfiqurasiya' },
-  { key: 'warranty', label: 'Zəmanət axtarışı' },
-];
-
-const CONFIG_TABS = [
-  { key: 'structure', label: 'Qovluq strukturu' },
-  { key: 'categories', label: 'Kateqoriyalar' },
-];
-
 export default function WarehousePage() {
-  const [activeTab, setActiveTab] = useState('anbar');
-  const [configTab, setConfigTab] = useState('structure');
+  const searchParams = useSearchParams();
+  const initialNodeId = searchParams.get('nodeId');
   const [scanOpen, setScanOpen] = useState(false);
   const [scannedNodeId, setScannedNodeId] = useState<string | null>(null);
   const [scannedItemId, setScannedItemId] = useState<string | null>(null);
@@ -66,9 +52,9 @@ export default function WarehousePage() {
     <div className="space-y-6">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight">Stok İdarəetməsi</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight">Anbar</h1>
           <p className="text-sm text-muted-foreground">
-            Dinamik Layer strukturu, kateqoriyalar, məhsullar və zəmanət izləmə
+            Dinamik Layer strukturu üzrə naviqasiya və məhsullar
           </p>
         </div>
         <Button variant="gold" size="sm" onClick={() => setScanOpen(true)}>
@@ -77,27 +63,9 @@ export default function WarehousePage() {
         </Button>
       </div>
 
-      <Tabs items={TABS} value={activeTab} onChange={setActiveTab} />
-
-      {activeTab === 'anbar' && (
-        <TableWrap className="p-4">
-          <NodeCardBrowser />
-        </TableWrap>
-      )}
-
-      {activeTab === 'config' && (
-        <TableWrap className="p-4">
-          <Tabs items={CONFIG_TABS} value={configTab} onChange={setConfigTab} className="mb-4" />
-          {configTab === 'structure' && <NodeTree mode="manage" />}
-          {configTab === 'categories' && <CategoryManager />}
-        </TableWrap>
-      )}
-
-      {activeTab === 'warranty' && (
-        <TableWrap className="p-4">
-          <WarrantySearchPanel />
-        </TableWrap>
-      )}
+      <TableWrap className="p-4">
+        <NodeCardBrowser initialNodeId={initialNodeId} />
+      </TableWrap>
 
       <QrScanDialog open={scanOpen} onOpenChange={setScanOpen} onResult={handleScanResult} />
       <ItemDetailDialog

@@ -52,6 +52,8 @@ export interface InventoryCategoryField {
   isVisible: boolean;
   /** Whether this field gets its own column in the leaf-node item table. */
   showInTable: boolean;
+  /** Auto-seeded on category creation (Şəkil/Açıqlama/İstehsalçı/Vəziyyət) — cannot be deleted. */
+  isSystem: boolean;
 }
 
 export interface InventoryCategoryFieldRequest {

@@ -17,9 +17,8 @@ import { Label, Field, FieldError } from '@/components/ui/label';
 import { Alert } from '@/components/ui/alert';
 import { useCreateInventoryCategory, useUpdateInventoryCategory } from '@/hooks/use-inventory';
 import { ApiRequestError } from '@/lib/api/client';
+import { UNIT_OPTIONS } from '@/lib/constants/units';
 import type { InventoryCategory } from '@/types/inventory';
-
-const UNIT_OPTIONS = ['Ədəd', 'Kg', 'Qram', 'Litr', 'Metr', 'Metr²', 'Metr³', 'Paket', 'Qutu', 'Dəst', 'Ton', 'Rulon'];
 
 const categoryFormSchema = z.object({
   name: z.string().min(1, 'Ad tələb olunur').max(255),
