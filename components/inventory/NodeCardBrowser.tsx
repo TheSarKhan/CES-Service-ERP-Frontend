@@ -75,8 +75,8 @@ export function NodeCardBrowser({ initialNodeId }: { initialNodeId?: string | nu
         )}
         {!isLoading && !isError && rootNodes && rootNodes.length === 0 && (
           <Empty
-            title="Bu səviyyədə node yoxdur"
-            description="Node-lar Konfiqurasiya bölməsindən yaradılır."
+            title="Bu səviyyədə qovluq yoxdur"
+            description="Qovluqlar Konfiqurasiya bölməsindən yaradılır."
             icon={<Folder className="mx-auto h-12 w-12" />}
           />
         )}

@@ -54,6 +54,17 @@ export interface CreateRoleRequest {
   permissionIds?: string[];
 }
 
+/**
+ * PUT /api/v1/roles/{id} request body. Permissions are not part of it — those are managed
+ * through the dedicated permissions endpoint, so an edit here can't silently wipe them.
+ */
+export interface UpdateRoleRequest {
+  name: string;
+  code: string;
+  description?: string | null;
+  isActive?: boolean;
+}
+
 /** POST /api/v1/roles/{id}/permissions request body. */
 export interface AssignPermissionsRequest {
   permissionIds: string[];

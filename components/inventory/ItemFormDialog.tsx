@@ -179,7 +179,7 @@ export function ItemFormDialog({
       } else if (error instanceof ApiRequestError && error.code === 'ENTITY_PENDING_APPROVAL') {
         setServerError('Bu məhsulun təsdiq gözləyən dəyişikliyi var — əvvəlcə o qərara alınmalıdır.');
       } else if (error instanceof ApiRequestError && error.code === 'NODE_CATEGORY_NOT_ALLOWED') {
-        setServerError('Seçilmiş kateqoriya bu node üçün icazəli deyil.');
+        setServerError('Seçilmiş kateqoriya bu qovluq üçün icazəli deyil.');
       } else {
         setServerError(error instanceof Error ? error.message : 'Serverlə əlaqə qurulmadı.');
       }

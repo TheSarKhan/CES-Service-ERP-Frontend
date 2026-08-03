@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from './client';
+import { apiDelete, apiGet, apiPost, apiPut } from './client';
 import type { PageMeta, PageResponse } from '@/types/api';
 import type {
   AssignPermissionsRequest,
@@ -7,6 +7,7 @@ import type {
   Role,
   RoleListParams,
   RoleUser,
+  UpdateRoleRequest,
 } from '@/types/role';
 
 /**
@@ -33,6 +34,16 @@ export async function getRoles(
 /** POST /api/v1/roles */
 export async function createRole(body: CreateRoleRequest): Promise<Role> {
   return apiPost<Role>('/roles', body);
+}
+
+/** PUT /api/v1/roles/{id} — rename / re-code / (de)activate. System roles are rejected. */
+export async function updateRole(id: string, body: UpdateRoleRequest): Promise<Role> {
+  return apiPut<Role>(`/roles/${id}`, body);
+}
+
+/** DELETE /api/v1/roles/{id} — soft delete. Blocked for system roles and roles still in use. */
+export async function deleteRole(id: string): Promise<void> {
+  return apiDelete(`/roles/${id}`);
 }
 
 /** GET /api/v1/roles/{id}/permissions — permissions currently granted to a role. */

@@ -52,7 +52,7 @@ export function MoveItemDialog({ open, onOpenChange, item }: MoveItemDialogProps
         <DialogHeader>
           <DialogTitle>{item.name} — köçür</DialogTitle>
           <DialogDescription>
-            Hədəf node-u seçin (adına klikləyin, ya da &quot;seç&quot; düyməsini basın)
+            Hədəf qovluğu seçin (adına klikləyin, ya da &quot;seç&quot; düyməsini basın)
           </DialogDescription>
         </DialogHeader>
         {error && (

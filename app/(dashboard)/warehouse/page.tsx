@@ -54,7 +54,7 @@ export default function WarehousePage() {
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight">Anbar</h1>
           <p className="text-sm text-muted-foreground">
-            Dinamik Layer strukturu üzrə naviqasiya və məhsullar
+            Qovluq strukturu üzrə naviqasiya və məhsullar
           </p>
         </div>
         <Button variant="gold" size="sm" onClick={() => setScanOpen(true)}>
@@ -76,9 +76,9 @@ export default function WarehousePage() {
       <Dialog open={Boolean(scannedNodeId)} onOpenChange={(open) => !open && setScannedNodeId(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>{scannedNode?.name ?? 'Node'}</DialogTitle>
+            <DialogTitle>{scannedNode?.name ?? 'Qovluq'}</DialogTitle>
             <DialogDescription>
-              Bu node-u tapmaq üçün Anbar/Konfiqurasiya bölmələrindən naviqasiya edin
+              Bu qovluğu tapmaq üçün Anbar/Konfiqurasiya bölmələrindən naviqasiya edin
             </DialogDescription>
           </DialogHeader>
           {scannedNode && (

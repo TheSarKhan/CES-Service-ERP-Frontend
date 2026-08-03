@@ -110,7 +110,7 @@ export function NodeFormDialog({ open, onOpenChange, parentId, editingNode, onSa
       if (error instanceof ApiRequestError && error.code === 'ENTITY_PENDING_APPROVAL') {
         setServerError('Bu qovluğun təsdiq gözləyən dəyişikliyi var — əvvəlcə o qərara alınmalıdır.');
       } else if (error instanceof ApiRequestError && error.code === 'DUPLICATE_NODE_NAME') {
-        setServerError('Bu adda bir node artıq bu səviyyədə mövcuddur.');
+        setServerError('Bu adda qovluq artıq bu səviyyədə mövcuddur.');
       } else {
         setServerError(error instanceof Error ? error.message : 'Serverlə əlaqə qurulmadı.');
       }
@@ -122,7 +122,7 @@ export function NodeFormDialog({ open, onOpenChange, parentId, editingNode, onSa
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Node-u redaktə et' : 'Yeni node yarat'}</DialogTitle>
+          <DialogTitle>{isEditing ? 'Qovluğu redaktə et' : 'Yeni qovluq yarat'}</DialogTitle>
         </DialogHeader>
 
         {serverError && (
@@ -184,7 +184,7 @@ export function NodeFormDialog({ open, onOpenChange, parentId, editingNode, onSa
               <FieldHint>Hələ kateqoriya yaradılmayıb.</FieldHint>
             )}
             <FieldHint>
-              Heç biri seçilməyibsə, bu node-da istənilən kateqoriyadan məhsul əlavə edilə bilər.
+              Heç biri seçilməyibsə, bu qovluqda istənilən kateqoriyadan məhsul əlavə edilə bilər.
             </FieldHint>
           </Field>
 

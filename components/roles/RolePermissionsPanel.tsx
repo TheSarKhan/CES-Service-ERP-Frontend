@@ -1,34 +1,75 @@
 'use client';
 
 import { useMemo } from 'react';
-import { ShieldCheck } from 'lucide-react';
-import { useRolePermissions } from '@/hooks/use-roles';
-import { Badge } from '@/components/ui/badge';
+import { Check, ShieldCheck, X } from 'lucide-react';
+import { usePermissionCatalog, useRolePermissions } from '@/hooks/use-roles';
 import { Skeleton } from '@/components/ui/skeleton';
 import { permissionModuleLabel } from '@/lib/constants/permission-modules';
-import type { Permission } from '@/types/role';
+import { cn } from '@/lib/utils';
+import type { HttpMethod, Permission } from '@/types/role';
 
-function groupByModule(permissions: Permission[]): Map<string, Permission[]> {
-  const byModule = new Map<string, Permission[]>();
-  for (const perm of permissions) {
-    const bucket = byModule.get(perm.module) ?? [];
-    bucket.push(perm);
-    byModule.set(perm.module, bucket);
-  }
-  return byModule;
+const CRUD_METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'DELETE'];
+const CENTERED: React.CSSProperties = { textAlign: 'center' };
+
+interface ModuleRow {
+  module: string;
+  crud: Partial<Record<HttpMethod, Permission>>;
+  other: Permission[];
+  grantedCount: number;
 }
 
-/** Left panel of a role's expand row: modules the role has access to + its permissions in each. */
-export function RolePermissionsPanel({ roleId }: { roleId: string }) {
-  const { data: permissions, isLoading } = useRolePermissions(roleId);
+/**
+ * Same shape as {@link PermissionMatrixEditor} — modules as rows, CRUD methods as columns — but
+ * read-only, so grants render as ✓/✗ instead of checkboxes.
+ *
+ * Modules where the role holds nothing are dropped: the panel answers "what can this role do, and
+ * what is it missing inside that", and a wall of ✗ rows for untouched modules just reprints the
+ * catalog under every role.
+ */
+function buildRows(catalog: Permission[], grantedIds: Set<string>): ModuleRow[] {
+  const byModule = new Map<string, ModuleRow>();
+  for (const perm of catalog) {
+    let row = byModule.get(perm.module);
+    if (!row) {
+      row = { module: perm.module, crud: {}, other: [], grantedCount: 0 };
+      byModule.set(perm.module, row);
+    }
+    if (perm.permType === 'CRUD' && perm.httpMethod) {
+      row.crud[perm.httpMethod] = perm;
+    } else {
+      row.other.push(perm);
+    }
+    if (grantedIds.has(perm.id)) row.grantedCount += 1;
+  }
 
-  const groups = useMemo(
-    () =>
-      Array.from(groupByModule(permissions ?? []).entries()).sort(([a], [b]) =>
-        permissionModuleLabel(a).localeCompare(permissionModuleLabel(b), 'az'),
-      ),
-    [permissions],
+  return Array.from(byModule.values())
+    .filter((row) => row.grantedCount > 0)
+    .sort((a, b) =>
+      permissionModuleLabel(a.module).localeCompare(permissionModuleLabel(b.module), 'az'),
+    );
+}
+
+/** ✓ granted · ✗ exists but not granted. */
+function GrantMark({ granted }: { granted: boolean }) {
+  return granted ? (
+    <Check className="mx-auto h-4 w-4 text-ok" aria-label="var" />
+  ) : (
+    <X className="mx-auto h-4 w-4 text-danger opacity-60" aria-label="yoxdur" />
   );
+}
+
+/** Left panel of a role's expand row: the role × permission matrix, limited to reachable modules. */
+export function RolePermissionsPanel({ roleId }: { roleId: string }) {
+  const { data: granted, isLoading } = useRolePermissions(roleId);
+  const { data: catalog, isLoading: catalogLoading } = usePermissionCatalog();
+
+  const grantedIds = useMemo(() => new Set((granted ?? []).map((p) => p.id)), [granted]);
+  const rows = useMemo(
+    () => (catalog && granted ? buildRows(catalog, grantedIds) : []),
+    [catalog, granted, grantedIds],
+  );
+
+  const loading = isLoading || catalogLoading;
 
   return (
     <div>
@@ -37,7 +78,7 @@ export function RolePermissionsPanel({ roleId }: { roleId: string }) {
         İcazəli modullar
       </h4>
 
-      {isLoading && (
+      {loading && (
         <div className="space-y-2">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-10 w-full" />
@@ -45,27 +86,75 @@ export function RolePermissionsPanel({ roleId }: { roleId: string }) {
         </div>
       )}
 
-      {!isLoading && groups.length === 0 && (
+      {!loading && rows.length === 0 && (
         <p className="text-sm text-muted-foreground">Bu rolun heç bir icazəsi yoxdur.</p>
       )}
 
-      {!isLoading && groups.length > 0 && (
-        <ul className="space-y-2.5">
-          {groups.map(([module, perms]) => (
-            <li key={module} className="rounded-lg border border-line bg-surface px-3 py-2.5">
-              <div className="mb-1.5 text-[13px] font-semibold">
-                {permissionModuleLabel(module)}
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {perms.map((perm) => (
-                  <Badge key={perm.id} variant="mute" size="sm" title={perm.name}>
-                    {perm.httpMethod ?? perm.name}
-                  </Badge>
+      {!loading && rows.length > 0 && (
+        <div className="overflow-x-auto rounded-lg border border-line">
+          <table className="tbl w-full">
+            <thead>
+              <tr>
+                <th>Modul</th>
+                {CRUD_METHODS.map((method) => (
+                  <th key={method} className="w-chk" style={CENTERED}>
+                    {method}
+                  </th>
                 ))}
-              </div>
-            </li>
-          ))}
-        </ul>
+                <th>Digər icazələr</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.module}>
+                  <td className="font-semibold">{permissionModuleLabel(row.module)}</td>
+                  {CRUD_METHODS.map((method) => {
+                    const perm = row.crud[method];
+                    return (
+                      <td key={method} style={CENTERED}>
+                        {perm ? (
+                          <GrantMark granted={grantedIds.has(perm.id)} />
+                        ) : (
+                          // The module has no permission of this kind at all — distinct from
+                          // having one the role wasn't given.
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                    );
+                  })}
+                  <td>
+                    {row.other.length === 0 ? (
+                      <span className="text-muted-foreground">—</span>
+                    ) : (
+                      <div className="flex flex-col gap-1">
+                        {row.other.map((perm) => {
+                          const isGranted = grantedIds.has(perm.id);
+                          return (
+                            <span
+                              key={perm.id}
+                              title={perm.description ?? perm.code}
+                              className={cn(
+                                'flex items-center gap-1.5 text-[12.5px]',
+                                !isGranted && 'text-muted-foreground',
+                              )}
+                            >
+                              {isGranted ? (
+                                <Check className="h-3.5 w-3.5 shrink-0 text-ok" />
+                              ) : (
+                                <X className="h-3.5 w-3.5 shrink-0 text-danger opacity-60" />
+                              )}
+                              {perm.name}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

@@ -4,13 +4,20 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   assignPermissions,
   createRole,
+  deleteRole,
   getPermissions,
   getRolePermissions,
   getRoles,
   getRoleUsers,
+  updateRole,
 } from '@/lib/api/roles';
 import { useAuthStore } from '@/store/auth-store';
-import type { AssignPermissionsRequest, CreateRoleRequest, RoleListParams } from '@/types/role';
+import type {
+  AssignPermissionsRequest,
+  CreateRoleRequest,
+  RoleListParams,
+  UpdateRoleRequest,
+} from '@/types/role';
 
 /** Query key factory for role & permission queries. */
 export const roleKeys = {
@@ -69,6 +76,28 @@ export function useCreateRole() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: CreateRoleRequest) => createRole(body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: roleKeys.all });
+    },
+  });
+}
+
+/** Rename / re-code / (de)activate a role. Rejected by the API for system roles. */
+export function useUpdateRole() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: UpdateRoleRequest }) => updateRole(id, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: roleKeys.all });
+    },
+  });
+}
+
+/** Soft-delete a role. Blocked by the API for system roles and roles still assigned to users. */
+export function useDeleteRole() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteRole(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: roleKeys.all });
     },

@@ -1,8 +1,8 @@
 'use client';
 
 import { Fragment, useState } from 'react';
-import { ChevronDown, Search, ShieldCheck } from 'lucide-react';
-import { useRoles } from '@/hooks/use-roles';
+import { ChevronDown, Pencil, Search, ShieldCheck, Trash2 } from 'lucide-react';
+import { useDeleteRole, useRoles } from '@/hooks/use-roles';
 import {
   TableWrap,
   TableTools,
@@ -21,6 +21,10 @@ import { Input } from '@/components/ui/input';
 import { CreateRoleDialog } from '@/components/roles/CreateRoleDialog';
 import { RolePermissionsPanel } from '@/components/roles/RolePermissionsPanel';
 import { RoleUsersPanel } from '@/components/roles/RoleUsersPanel';
+import { EditRoleDialog } from '@/components/roles/EditRoleDialog';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { ApiRequestError } from '@/lib/api/client';
+import type { Role } from '@/types/role';
 import { cn } from '@/lib/utils';
 
 const PAGE_SIZE = 20;
@@ -30,6 +34,10 @@ export default function RolesPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [expandedRoleId, setExpandedRoleId] = useState<string | null>(null);
+  const [editingRole, setEditingRole] = useState<Role | null>(null);
+  const [deletingRole, setDeletingRole] = useState<Role | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const deleteRole = useDeleteRole();
 
   const { data, isLoading, isError, error } = useRoles({
     page,
@@ -50,6 +58,23 @@ export default function RolesPage() {
 
   function toggleExpand(roleId: string) {
     setExpandedRoleId((current) => (current === roleId ? null : roleId));
+  }
+
+  async function handleDelete() {
+    if (!deletingRole) return;
+    setDeleteError(null);
+    try {
+      await deleteRole.mutateAsync(deletingRole.id);
+      setDeletingRole(null);
+    } catch (error) {
+      setDeleteError(
+        error instanceof ApiRequestError && error.code === 'ROLE_HAS_ACTIVE_USERS'
+          ? 'Bu rol istifadəçilərə təyin olunub — əvvəlcə onlardan geri alın.'
+          : error instanceof ApiRequestError && error.code === 'SYSTEM_ROLE_PROTECTED'
+            ? 'Bu sistem roludur və silinə bilməz.'
+            : 'Rol silinmədi.',
+      );
+    }
   }
 
   return (
@@ -140,20 +165,49 @@ export default function RolesPage() {
                         </div>
                       </TableCell>
                       <TableCell className="r">
-                        <button
-                          type="button"
-                          onClick={() => toggleExpand(role.id)}
-                          aria-expanded={isExpanded}
-                          aria-label="Rol təfərrüatlarını göstər"
-                          className="btn btn-outline btn-icon"
-                        >
-                          <ChevronDown
-                            className={cn(
-                              'h-4 w-4 transition-transform',
-                              isExpanded && 'rotate-180',
-                            )}
-                          />
-                        </button>
+                        <div className="flex items-center justify-end gap-0.5">
+                          {/* System roles are refused by the API, so the actions aren't offered
+                              at all rather than failing after the click. */}
+                          {!role.isSystem && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => setEditingRole(role)}
+                                className="btn btn-ghost btn-icon"
+                                aria-label="Rolu redaktə et"
+                                title="Redaktə et"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDeleteError(null);
+                                  setDeletingRole(role);
+                                }}
+                                className="btn btn-ghost btn-icon"
+                                aria-label="Rolu sil"
+                                title="Sil"
+                              >
+                                <Trash2 className="h-4 w-4 text-danger" />
+                              </button>
+                            </>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => toggleExpand(role.id)}
+                            aria-expanded={isExpanded}
+                            aria-label="Rol təfərrüatlarını göstər"
+                            className="btn btn-outline btn-icon"
+                          >
+                            <ChevronDown
+                              className={cn(
+                                'h-4 w-4 transition-transform',
+                                isExpanded && 'rotate-180',
+                              )}
+                            />
+                          </button>
+                        </div>
                       </TableCell>
                     </TableRow>
 
@@ -192,6 +246,23 @@ export default function RolesPage() {
           />
         )}
       </TableWrap>
+
+      <EditRoleDialog
+        role={editingRole}
+        open={Boolean(editingRole)}
+        onOpenChange={(open) => !open && setEditingRole(null)}
+      />
+
+      <ConfirmDialog
+        open={Boolean(deletingRole)}
+        onOpenChange={(open) => !open && setDeletingRole(null)}
+        title="Rolu sil"
+        description={`“${deletingRole?.name ?? ''}” rolu silinsin? Bu əməliyyat geri qaytarılmır.`}
+        confirmLabel="Sil"
+        error={deleteError}
+        loading={deleteRole.isPending}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

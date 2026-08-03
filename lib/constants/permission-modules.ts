@@ -16,6 +16,7 @@ export const PERMISSION_MODULE_LABELS: Record<string, string> = {
   USER: 'İstifadəçilər',
   ROLE: 'Rollar & İcazələr',
   AUDIT: 'Audit qeydləri',
+  APPROVAL: 'Təsdiqləmələr',
 };
 
 /** Azerbaijani label for a permission module code, falling back to the raw code. */

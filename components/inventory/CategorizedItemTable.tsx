@@ -283,7 +283,7 @@ export function CategorizedItemTable({
             description={
               availableCategories.length > 0
                 ? 'Məhsul əlavə etmək üçün əvvəlcə onun kateqoriyasını seçin.'
-                : 'Bu node-da hələ məhsul əlavə edilməyib. Əvvəlcə Konfiqurasiya bölməsindən kateqoriya yaradın.'
+                : 'Bu qovluqda hələ məhsul əlavə edilməyib. Əvvəlcə Konfiqurasiya bölməsindən kateqoriya yaradın.'
             }
             icon={<Package className="mx-auto h-12 w-12" />}
             action={availableCategories.length > 0 && categoryPicker}

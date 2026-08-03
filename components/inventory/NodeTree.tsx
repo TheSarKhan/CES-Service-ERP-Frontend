@@ -52,7 +52,7 @@ export function NodeTree({ mode, onRowClick, selectedId }: NodeTreeProps) {
     } catch (err) {
       setError(
         err instanceof ApiRequestError && err.code === 'NODE_NOT_EMPTY'
-          ? `“${node.name}” node-unun alt node-ları və ya məhsulları var — əvvəlcə onları silin.`
+          ? `“${node.name}” qovluğunun alt qovluqları və ya məhsulları var — əvvəlcə onları silin.`
           : err instanceof ApiRequestError && err.code === 'ENTITY_PENDING_APPROVAL'
             ? 'Bu qovluğun təsdiq gözləyən dəyişikliyi var — əvvəlcə o qərara alınmalıdır.'
             : 'Silinmədi.',
@@ -66,7 +66,7 @@ export function NodeTree({ mode, onRowClick, selectedId }: NodeTreeProps) {
         <div className="mb-3 flex justify-end">
           <Button variant="outline" size="sm" onClick={() => setCreateParentId(null)}>
             <Plus className="h-4 w-4" />
-            Kök node
+            Kök qovluq
           </Button>
         </div>
       )}
@@ -80,7 +80,7 @@ export function NodeTree({ mode, onRowClick, selectedId }: NodeTreeProps) {
       )}
       {isError && (
         <Alert variant="danger" title="Yüklənmədi">
-          Node siyahısı yüklənə bilmədi.
+          Qovluq siyahısı yüklənə bilmədi.
         </Alert>
       )}
       {isLoading && (
@@ -92,8 +92,8 @@ export function NodeTree({ mode, onRowClick, selectedId }: NodeTreeProps) {
       )}
       {!isLoading && !isError && rootNodes && rootNodes.length === 0 && (
         <Empty
-          title="Node yoxdur"
-          description="Kök node yaradaraq strukturu başladın."
+          title="Qovluq yoxdur"
+          description="Kök qovluq yaradaraq strukturu başladın."
           icon={<Folder className="mx-auto h-12 w-12" />}
         />
       )}
@@ -229,8 +229,8 @@ function NodeTreeRow({
               type="button"
               onClick={() => onRowClick?.(node)}
               className="btn btn-ghost btn-icon"
-              aria-label="Bu node-u seç"
-              title="Bu node-u seç"
+              aria-label="Bu qovluğu seç"
+              title="Bu qovluğu seç"
             >
               <Check className="h-4 w-4 text-gold" />
             </button>
@@ -250,8 +250,8 @@ function NodeTreeRow({
                 type="button"
                 onClick={() => onRequestCreateChild(node.id)}
                 className="btn btn-ghost btn-icon"
-                aria-label="Alt node əlavə et"
-                title="Alt node əlavə et"
+                aria-label="Alt qovluq əlavə et"
+                title="Alt qovluq əlavə et"
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -288,7 +288,7 @@ function NodeTreeRow({
               style={{ paddingLeft: (depth + 1) * INDENT_PX + 34 }}
               className="py-1 text-xs text-muted-foreground"
             >
-              Alt node yoxdur
+              Alt qovluq yoxdur
             </li>
           )}
           {children?.map((child) => (
