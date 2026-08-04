@@ -255,6 +255,42 @@ export interface InventoryUnitSearchParams {
   dir?: 'asc' | 'desc';
 }
 
+// ── Stocktakes ───────────────────────────────────────────────────────────
+
+export type StocktakeStatus = 'OPEN' | 'PENDING_APPROVAL' | 'APPLIED' | 'CANCELLED';
+
+export interface StocktakeLine {
+  itemId: string;
+  itemName: string | null;
+  itemSku: string | null;
+  unit: string | null;
+  /** Null while the sheet is OPEN — this is what makes the count blind. */
+  systemQuantity: number | null;
+  /** Null means not counted yet, which is not the same as counted and found empty. */
+  countedQuantity: number | null;
+  /** counted − system; only known once the sheet is closed. */
+  variance: number | null;
+  notes: string | null;
+}
+
+export interface Stocktake {
+  id: string;
+  nodeId: string;
+  nodeName: string | null;
+  status: StocktakeStatus;
+  notes: string | null;
+  approvalRequestId: string | null;
+  openedBy: string | null;
+  openedByName: string | null;
+  openedAt: string;
+  closedAt: string | null;
+  appliedAt: string | null;
+  lineCount: number;
+  countedCount: number;
+  varianceCount: number;
+  lines: StocktakeLine[];
+}
+
 // ── Transfers ────────────────────────────────────────────────────────────
 
 /** IN_TRANSIT means it has left the source shelf but not yet reached the destination. */

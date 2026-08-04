@@ -6,7 +6,12 @@
  * record as it stood when the request was made — the two together form the diff a reviewer sees.
  */
 
-export type ApprovalEntityType = 'INVENTORY_ITEM' | 'INVENTORY_NODE' | 'INVENTORY_CATEGORY';
+export type ApprovalEntityType =
+  | 'INVENTORY_ITEM'
+  | 'INVENTORY_ITEM_UNIT'
+  | 'INVENTORY_NODE'
+  | 'INVENTORY_CATEGORY'
+  | 'INVENTORY_STOCKTAKE';
 
 export type ApprovalOperation =
   | 'UPDATE'
@@ -18,7 +23,8 @@ export type ApprovalOperation =
   | 'FIELD_ADD'
   | 'FIELD_UPDATE'
   | 'FIELD_DELETE'
-  | 'WARRANTY_EXTEND';
+  | 'WARRANTY_EXTEND'
+  | 'STOCKTAKE_APPLY';
 
 export type ApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
 

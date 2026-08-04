@@ -56,12 +56,15 @@ const OPERATION_LABELS: Record<ApprovalOperation, string> = {
   FIELD_UPDATE: 'Sahə redaktəsi',
   FIELD_DELETE: 'Sahə silinməsi',
   WARRANTY_EXTEND: 'Zəmanət uzadılması',
+  STOCKTAKE_APPLY: 'İnventarizasiya fərqləri',
 };
 
 const ENTITY_LABELS: Record<ApprovalEntityType, string> = {
   INVENTORY_ITEM: 'Məhsul',
+  INVENTORY_ITEM_UNIT: 'Seriyalı vahid',
   INVENTORY_NODE: 'Qovluq',
   INVENTORY_CATEGORY: 'Kateqoriya',
+  INVENTORY_STOCKTAKE: 'İnventarizasiya',
 };
 
 const STATUS_META: Record<ApprovalStatus, { label: string; variant: 'warn' | 'ok' | 'danger' | 'mute' }> = {

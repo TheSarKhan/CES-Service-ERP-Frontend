@@ -12,6 +12,7 @@ import type {
   InventoryItemUnitUpdateRequest,
   InventoryNodeRequest,
   InventorySettingsRequest,
+  StocktakeStatus,
   TransferRequest,
   TransferStatus,
   InventoryUnitSearchParams,
@@ -45,6 +46,9 @@ export const inventoryKeys = {
   lowStock: (branchId: string | null, criticalOnly: boolean, page: number) =>
     ['inventory', 'stock-alerts', branchId, criticalOnly, page] as const,
   settings: (branchId: string | null) => ['inventory', 'settings', branchId] as const,
+  stocktakes: (branchId: string | null, status: StocktakeStatus | undefined, page: number) =>
+    ['inventory', 'stocktakes', branchId, status ?? 'all', page] as const,
+  stocktake: (id: string) => ['inventory', 'stocktakes', 'detail', id] as const,
   transfers: (branchId: string | null, status: TransferStatus | undefined, page: number) =>
     ['inventory', 'transfers', branchId, status ?? 'all', page] as const,
   stockMovements: (branchId: string | null, params: StockMovementParams) =>
@@ -400,6 +404,62 @@ export function useUpdateInventorySettings() {
     mutationFn: (body: InventorySettingsRequest) => api.updateInventorySettings(body),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['inventory', 'settings'] }),
   });
+}
+
+// ── Stocktakes ───────────────────────────────────────────────────────────
+
+export function useStocktakes(status?: StocktakeStatus, page = 1, size = 20) {
+  const activeBranchId = useAuthStore((s) => s.activeBranchId);
+  return useQuery({
+    queryKey: inventoryKeys.stocktakes(activeBranchId, status, page),
+    queryFn: () => api.getStocktakes({ status, page, size }),
+    enabled: Boolean(activeBranchId),
+  });
+}
+
+export function useStocktake(id: string | null) {
+  return useQuery({
+    queryKey: inventoryKeys.stocktake(id ?? ''),
+    queryFn: () => api.getStocktake(id as string),
+    enabled: Boolean(id),
+  });
+}
+
+function useInvalidateStocktakes() {
+  const queryClient = useQueryClient();
+  return () => queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+}
+
+export function useOpenStocktake() {
+  const invalidate = useInvalidateStocktakes();
+  return useMutation({
+    mutationFn: (body: { nodeId: string; notes?: string | null }) => api.openStocktake(body),
+    onSuccess: invalidate,
+  });
+}
+
+export function useCountStocktakeLine() {
+  const invalidate = useInvalidateStocktakes();
+  return useMutation({
+    mutationFn: ({
+      id,
+      body,
+    }: {
+      id: string;
+      body: { itemId: string; countedQuantity: number; notes?: string | null };
+    }) => api.countStocktakeLine(id, body),
+    onSuccess: invalidate,
+  });
+}
+
+export function useCloseStocktake() {
+  const invalidate = useInvalidateStocktakes();
+  return useMutation({ mutationFn: (id: string) => api.closeStocktake(id), onSuccess: invalidate });
+}
+
+export function useCancelStocktake() {
+  const invalidate = useInvalidateStocktakes();
+  return useMutation({ mutationFn: (id: string) => api.cancelStocktake(id), onSuccess: invalidate });
 }
 
 // ── Transfers ────────────────────────────────────────────────────────────
