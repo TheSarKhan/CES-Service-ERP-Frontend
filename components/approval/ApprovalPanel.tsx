@@ -54,6 +54,7 @@ const OPERATION_LABELS: Record<ApprovalOperation, string> = {
   FIELD_ADD: 'Sahə əlavəsi',
   FIELD_UPDATE: 'Sahə redaktəsi',
   FIELD_DELETE: 'Sahə silinməsi',
+  WARRANTY_EXTEND: 'Zəmanət uzadılması',
 };
 
 const ENTITY_LABELS: Record<ApprovalEntityType, string> = {
@@ -128,6 +129,93 @@ function labelFor(key: string): string {
   return FIELD_LABELS[key] ?? key;
 }
 
+/** Trims the trailing zeros Postgres numeric(12,3) brings along: `215.000` reads as noise. */
+function formatQuantity(value: number): string {
+  return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(3)));
+}
+
+function toNumber(value: unknown): number | null {
+  const n = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+const STOCK_OPERATIONS = new Set<ApprovalOperation>(['STOCK_IN', 'STOCK_OUT', 'STOCK_ADJUST']);
+
+/**
+ * Stock quantity after the operation is applied — mirrors `InventoryItemService`: stock-in adds,
+ * stock-out subtracts, a count correction replaces. Safe to compute here because a pending
+ * request locks the item, so the snapshotted quantity cannot move underneath it.
+ */
+function resultingQuantity(operation: ApprovalOperation, before: number, amount: number): number {
+  if (operation === 'STOCK_ADJUST') return amount;
+  return operation === 'STOCK_IN' ? before + amount : before - amount;
+}
+
+/**
+ * Stock operations get their own block rather than the generic before/after diff.
+ *
+ * The payload carries a *delta*, so the generic diff put "50" in the "Sonra" column and made a
+ * 50-unit intake read as "stock drops to 50" — and a 50-unit withdrawal rendered identically.
+ * The reviewer is approving a resulting number, so that is what has to be on screen.
+ */
+function StockDiff({ request }: { request: ApprovalRequest }) {
+  const before = (request.beforeSnapshot ?? {}) as Record<string, unknown>;
+  const payload = (request.payload ?? {}) as Record<string, unknown>;
+
+  const currentQuantity = toNumber(before.quantity);
+  const amount = toNumber(payload.quantity);
+  if (currentQuantity === null || amount === null) return null;
+
+  const unit = typeof before.unit === 'string' ? before.unit : '';
+  const result = resultingQuantity(request.operation, currentQuantity, amount);
+  const isAdjust = request.operation === 'STOCK_ADJUST';
+  const sign = request.operation === 'STOCK_IN' ? '+' : '−';
+  const changeLabel = isAdjust ? 'Yeni sayım' : request.operation === 'STOCK_IN' ? 'Giriş' : 'Çıxış';
+  const reason = typeof payload.reason === 'string' ? payload.reason : '';
+
+  return (
+    <div>
+      <div className="grid grid-cols-3 gap-3 rounded-lg border border-line p-3 text-center">
+        <div>
+          <div className="text-xs text-muted-foreground">Hazırkı qalıq</div>
+          <div className="mt-0.5 text-lg font-bold">
+            {formatQuantity(currentQuantity)} <span className="text-sm font-normal">{unit}</span>
+          </div>
+        </div>
+        <div>
+          <div className="text-xs text-muted-foreground">{changeLabel}</div>
+          <div className="mt-0.5 text-lg font-bold text-gold">
+            {isAdjust ? '' : sign}
+            {formatQuantity(amount)} <span className="text-sm font-normal">{unit}</span>
+          </div>
+        </div>
+        <div>
+          <div className="text-xs text-muted-foreground">Təsdiqdən sonra</div>
+          <div className={cn('mt-0.5 text-lg font-extrabold', result < 0 && 'text-danger')}>
+            {formatQuantity(result)} <span className="text-sm font-normal">{unit}</span>
+          </div>
+        </div>
+      </div>
+
+      {result < 0 && (
+        <div className="mt-3">
+          <Alert variant="danger" title="Qalıq çatmır">
+            Anbarda yalnız {formatQuantity(currentQuantity)} {unit} var — bu sorğu təsdiqlənə
+            bilməz.
+          </Alert>
+        </div>
+      )}
+
+      {reason && (
+        <div className="mt-3 rounded-lg border border-line p-3">
+          <div className="text-xs text-muted-foreground">Səbəb</div>
+          <div className="mt-0.5 text-sm">{reason}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /**
  * Field-by-field comparison of the stored "before" snapshot against the parked payload.
  *
@@ -139,6 +227,16 @@ function ApprovalDiff({ request }: { request: ApprovalRequest }) {
   const before = (request.beforeSnapshot ?? {}) as Record<string, unknown>;
   const payload = (request.payload ?? {}) as Record<string, unknown>;
   const isDelete = request.operation === 'DELETE';
+
+  // Falls through to the generic diff if either number is missing, so an odd snapshot still shows
+  // the reviewer something rather than nothing.
+  if (
+    STOCK_OPERATIONS.has(request.operation) &&
+    toNumber(before.quantity) !== null &&
+    toNumber(payload.quantity) !== null
+  ) {
+    return <StockDiff request={request} />;
+  }
 
   if (isDelete) {
     const rows = Object.entries(before).filter(([key]) => !HIDDEN_DIFF_KEYS.has(key));

@@ -17,7 +17,8 @@ export type ApprovalOperation =
   | 'STOCK_ADJUST'
   | 'FIELD_ADD'
   | 'FIELD_UPDATE'
-  | 'FIELD_DELETE';
+  | 'FIELD_DELETE'
+  | 'WARRANTY_EXTEND';
 
 export type ApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
 

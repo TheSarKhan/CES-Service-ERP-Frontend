@@ -380,13 +380,18 @@ export function CategoryManager() {
                     <div className="mb-4 overflow-x-auto rounded-lg border border-line">
                       <table className="tbl w-full">
                         <thead>
+                          {/* Fixed widths on everything except the name: the toggle headings are
+                              uppercase and letter-spaced, so left to itself the layout gave them
+                              too little room and wrapped both the headings and the name badges. */}
                           <tr>
-                            <th className="w-6" />
+                            <th className="w-8" />
                             <th>Ad</th>
-                            <th>Tip</th>
-                            <th>Məcburi</th>
-                            <th>Cədvəldə göstər</th>
-                            <th className="r">Əməliyyat</th>
+                            <th className="w-[120px]">Tip</th>
+                            <th className="w-[110px] whitespace-nowrap text-center">Məcburi</th>
+                            <th className="w-[170px] whitespace-nowrap text-center">
+                              Cədvəldə göstər
+                            </th>
+                            <th className="r w-[96px]">Əməliyyat</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -402,20 +407,22 @@ export function CategoryManager() {
                               <td className="cursor-grab text-muted-foreground">
                                 <GripVertical className="h-4 w-4" />
                               </td>
-                              <td className="font-semibold">
-                                {field.label}
-                                {field.isSystem && (
-                                  <Badge variant="gold" size="sm" className="ml-1.5 align-middle">
-                                    Sistem
-                                  </Badge>
-                                )}
+                              <td>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-semibold">{field.label}</span>
+                                  {field.isSystem && (
+                                    <Badge variant="gold" size="sm" className="shrink-0">
+                                      Sistem
+                                    </Badge>
+                                  )}
+                                </div>
                               </td>
                               <td>
                                 <Badge variant="mute" size="sm">
                                   {FIELD_TYPE_LABELS[field.fieldType]}
                                 </Badge>
                               </td>
-                              <td>
+                              <td className="text-center">
                                 <Checkbox
                                   size="sm"
                                   checked={field.isRequired}
@@ -423,7 +430,7 @@ export function CategoryManager() {
                                   onChange={() => handleToggleRequired(field)}
                                 />
                               </td>
-                              <td>
+                              <td className="text-center">
                                 <Checkbox
                                   size="sm"
                                   checked={field.showInTable}

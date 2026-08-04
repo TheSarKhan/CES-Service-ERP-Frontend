@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ChevronRight, Folder, Plus } from 'lucide-react';
+import { ChevronRight, Folder, Plus, QrCode } from 'lucide-react';
 import { useInventoryNodeChildren, useInventoryNodePath } from '@/hooks/use-inventory';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Alert } from '@/components/ui/alert';
 import { CategorizedItemTable } from '@/components/inventory/CategorizedItemTable';
 import { FolderBand } from '@/components/inventory/FolderBand';
 import { NodeFormDialog } from '@/components/inventory/NodeFormDialog';
+import { QrCodeDialog } from '@/components/inventory/QrCodeDialog';
 import type { InventoryNode } from '@/types/inventory';
 
 /**
@@ -22,6 +23,7 @@ import type { InventoryNode } from '@/types/inventory';
 export function NodeCardBrowser({ initialNodeId }: { initialNodeId?: string | null }) {
   const [path, setPath] = useState<InventoryNode[]>([]);
   const [createChildOpen, setCreateChildOpen] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
   const [initialApplied, setInitialApplied] = useState(false);
 
   // Deep-link support (e.g. "Get" from Məhsul axtarışı) — resolve the node's ancestor chain once
@@ -130,10 +132,18 @@ export function NodeCardBrowser({ initialNodeId }: { initialNodeId?: string | nu
             </span>
           ))}
         </div>
-        <Button variant="outline" size="sm" onClick={() => setCreateChildOpen(true)}>
-          <Plus className="h-4 w-4" />
-          Alt qovluq yarat
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* The shelf label belongs where you stand on the shelf, not only in the configuration
+              tree — someone printing labels is walking the warehouse, not editing its schema. */}
+          <Button variant="outline" size="sm" onClick={() => setQrOpen(true)}>
+            <QrCode className="h-4 w-4" />
+            QR kod
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setCreateChildOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Alt qovluq yarat
+          </Button>
+        </div>
       </div>
 
       {hasChildren && (
@@ -149,6 +159,13 @@ export function NodeCardBrowser({ initialNodeId }: { initialNodeId?: string | nu
         open={createChildOpen}
         onOpenChange={setCreateChildOpen}
         parentId={currentNode.id}
+      />
+
+      <QrCodeDialog
+        open={qrOpen}
+        onOpenChange={setQrOpen}
+        title={currentNode.name}
+        value={currentNode.qrCode}
       />
     </div>
   );

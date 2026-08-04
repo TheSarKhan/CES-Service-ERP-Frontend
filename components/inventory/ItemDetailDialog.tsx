@@ -67,6 +67,7 @@ export function ItemDetailDialog({ open, onOpenChange, itemId }: ItemDetailDialo
   const [editOpen, setEditOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
+  const [nodeQrOpen, setNodeQrOpen] = useState(false);
   const [stockKind, setStockKind] = useState<'in' | 'out' | 'adjust' | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [approvalSent, setApprovalSent] = useState(false);
@@ -76,6 +77,8 @@ export function ItemDetailDialog({ open, onOpenChange, itemId }: ItemDetailDialo
   const { data: nodePath } = useInventoryNodePath(item?.nodeId ?? null, open && Boolean(item));
 
   if (!item) return null;
+  // Last crumb is the leaf the product actually sits in — the one worth labelling.
+  const containingNode = nodePath?.[nodePath.length - 1] ?? null;
   const category = categories?.find((c) => c.id === item.categoryId);
   const fields = (category?.fields ?? []).filter((f) => f.isVisible);
 
@@ -152,6 +155,19 @@ export function ItemDetailDialog({ open, onOpenChange, itemId }: ItemDetailDialo
                 ))
               ) : (
                 <span className="text-muted-foreground">yüklənir...</span>
+              )}
+              {/* The shelf's own label, reachable from the product that sits on it — someone
+                  holding the box needs the QR of where it goes back, not only of the box. */}
+              {containingNode && (
+                <button
+                  type="button"
+                  onClick={() => setNodeQrOpen(true)}
+                  className="btn btn-ghost btn-xs ml-1"
+                  title={`${containingNode.name} qovluğunun QR kodu`}
+                >
+                  <QrCode className="h-3.5 w-3.5" />
+                  Qovluğun QR-ı
+                </button>
               )}
             </div>
           </div>
@@ -235,6 +251,14 @@ export function ItemDetailDialog({ open, onOpenChange, itemId }: ItemDetailDialo
       />
       <MoveItemDialog open={moveOpen} onOpenChange={setMoveOpen} item={item} />
       <QrCodeDialog open={qrOpen} onOpenChange={setQrOpen} title={item.name} value={item.qrCode} />
+      {containingNode && (
+        <QrCodeDialog
+          open={nodeQrOpen}
+          onOpenChange={setNodeQrOpen}
+          title={containingNode.name}
+          value={containingNode.qrCode}
+        />
+      )}
       <ApprovalSubmittedDialog
         open={approvalSent}
         onOpenChange={setApprovalSent}
