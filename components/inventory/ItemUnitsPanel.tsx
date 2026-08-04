@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { AlertTriangle, Plus, QrCode, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, FileWarning, Plus, QrCode, ShieldCheck } from 'lucide-react';
 import { useInventoryItemUnits, useMarkInventoryItemUnitFailed } from '@/hooks/use-inventory';
 import { Button } from '@/components/ui/button';
 import { Empty } from '@/components/ui/empty';
@@ -22,6 +22,7 @@ import { formatDate } from '@/lib/utils/format';
 import { WarrantyExtendDialog } from '@/components/inventory/WarrantyExtendDialog';
 import { UnitBatchRegisterDialog } from '@/components/inventory/UnitBatchRegisterDialog';
 import { QrCodeDialog } from '@/components/inventory/QrCodeDialog';
+import { WarrantyClaimDialog } from '@/components/inventory/WarrantyClaimDialog';
 import type { InventoryItem, InventoryItemUnit } from '@/types/inventory';
 
 export function ItemUnitsPanel({ item }: { item: InventoryItem }) {
@@ -30,6 +31,7 @@ export function ItemUnitsPanel({ item }: { item: InventoryItem }) {
   const [failingUnit, setFailingUnit] = useState<InventoryItemUnit | null>(null);
   const [extendUnit, setExtendUnit] = useState<InventoryItemUnit | null>(null);
   const [qrUnit, setQrUnit] = useState<InventoryItemUnit | null>(null);
+  const [claimUnit, setClaimUnit] = useState<InventoryItemUnit | null>(null);
 
   const inStockCount = units?.filter((u) => u.status === 'IN_STOCK').length ?? 0;
 
@@ -92,6 +94,14 @@ export function ItemUnitsPanel({ item }: { item: InventoryItem }) {
                     Zəmanəti uzat
                   </Button>
                 )}
+                {/* Offered once a unit has actually failed — that's the moment someone picks up
+                    the phone to the supplier, and the record should follow the call. */}
+                {unit.status === 'FAILED' && (
+                  <Button variant="outline" size="xs" onClick={() => setClaimUnit(unit)}>
+                    <FileWarning className="h-3.5 w-3.5" />
+                    Zəmanət tələbi
+                  </Button>
+                )}
                 {(unit.status === 'IN_STOCK' || unit.status === 'IN_USE') && (
                   <Button variant="danger" size="xs" onClick={() => setFailingUnit(unit)}>
                     <AlertTriangle className="h-3.5 w-3.5" />
@@ -117,6 +127,16 @@ export function ItemUnitsPanel({ item }: { item: InventoryItem }) {
           id={extendUnit.id}
           label={extendUnit.serialNumber}
           currentEndDate={extendUnit.warrantyEndDate}
+        />
+      )}
+      {claimUnit && (
+        <WarrantyClaimDialog
+          open
+          onOpenChange={(open) => !open && setClaimUnit(null)}
+          targetType="INVENTORY_ITEM_UNIT"
+          targetId={claimUnit.id}
+          targetLabel={claimUnit.serialNumber}
+          defaultSupplier={item.supplier}
         />
       )}
       {qrUnit && (

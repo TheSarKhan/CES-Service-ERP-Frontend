@@ -45,6 +45,7 @@ const itemFormSchema = z.object({
   ),
   warrantyStartDate: z.string().optional(),
   warrantyEndDate: z.string().optional(),
+  supplier: z.string().max(255).optional(),
   notes: z.string().max(2000).optional(),
 });
 
@@ -97,6 +98,7 @@ export function ItemFormDialog({
       warrantyMonths: undefined,
       warrantyStartDate: '',
       warrantyEndDate: '',
+      supplier: '',
       notes: '',
     },
   });
@@ -131,6 +133,7 @@ export function ItemFormDialog({
         warrantyMonths: editingItem.warrantyMonths ?? undefined,
         warrantyStartDate: editingItem.warrantyStartDate ?? '',
         warrantyEndDate: editingItem.warrantyEndDate ?? '',
+        supplier: editingItem.supplier ?? '',
         notes: editingItem.notes ?? '',
       });
       setAttributes(editingItem.attributes ?? {});
@@ -148,6 +151,7 @@ export function ItemFormDialog({
         warrantyMonths: undefined,
         warrantyStartDate: '',
         warrantyEndDate: '',
+        supplier: '',
         notes: '',
       });
       setAttributes({});
@@ -180,6 +184,7 @@ export function ItemFormDialog({
       warrantyMonths: values.warrantyMonths ?? null,
       warrantyStartDate: values.warrantyStartDate || null,
       warrantyEndDate: values.warrantyEndDate || null,
+      supplier: values.supplier || null,
       notes: values.notes || null,
     };
 
@@ -368,6 +373,18 @@ export function ItemFormDialog({
                 saxlanılır və ayrıca dəyişdirilə bilər.
               </p>
             )}
+
+            {/* Its own field rather than a category attribute: a warranty claim is addressed to a
+                supplier, so the warranty screen filters and groups by it. */}
+            <Field className="mb-0 mt-4">
+              <Label htmlFor="item-supplier">Təchizatçı</Label>
+              <Input
+                id="item-supplier"
+                placeholder="Məsələn: Bosch Rexroth"
+                {...register('supplier')}
+              />
+              <FieldHint>Zəmanət tələbi bu təchizatçıya ünvanlanacaq.</FieldHint>
+            </Field>
           </div>
 
           {selectedCategory &&

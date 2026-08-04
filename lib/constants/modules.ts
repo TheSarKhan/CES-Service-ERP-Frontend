@@ -137,7 +137,7 @@ export const NAV_GROUPS: NavGroup[] = [
           },
           {
             key: 'M19_WAREHOUSE_WARRANTY',
-            label: 'Zəmanət axtarışı',
+            label: 'Zəmanət',
             href: '/warehouse/warranty',
             icon: SearchCheck,
             permission: 'WH_READ',

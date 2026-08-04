@@ -17,9 +17,16 @@ import type {
   InventoryNodeRequest,
   InventoryUnitSearchParams,
   StockQuantityRequest,
+  WarrantyClaim,
+  WarrantyClaimDecisionRequest,
+  WarrantyClaimListParams,
+  WarrantyClaimRequest,
   WarrantyExtendRequest,
   WarrantyExtension,
+  WarrantyRecord,
+  WarrantyRecordSearchParams,
   WarrantySummary,
+  WarrantyTargetType,
 } from '@/types/inventory';
 
 /**
@@ -170,6 +177,56 @@ export async function adjustInventoryItem(id: string, body: StockQuantityRequest
 /** Counts of warranties expiring soon / already expired, across items and units. */
 export async function getWarrantySummary(): Promise<WarrantySummary> {
   return apiGet<WarrantySummary>('/inventory/warranty/summary');
+}
+
+/**
+ * GET /api/v1/inventory/warranty/records — the unified warranty search: serialized units and
+ * non-serialized products in one list, always ordered soonest-expiry-first (no sort param).
+ */
+export async function searchWarrantyRecords(
+  params: WarrantyRecordSearchParams = {},
+): Promise<PageResponse<WarrantyRecord>> {
+  const page = await apiGet<RawPage<WarrantyRecord>>('/inventory/warranty/records', params);
+  return { items: page.content, meta: page.meta };
+}
+
+/** Suppliers actually present on products — fills the filter dropdown. */
+export async function getWarrantySuppliers(): Promise<string[]> {
+  return apiGet<string[]>('/inventory/warranty/suppliers');
+}
+
+// ── Warranty claims ─────────────────────────────────────────────────────
+
+export async function getWarrantyClaims(
+  params: WarrantyClaimListParams = {},
+): Promise<PageResponse<WarrantyClaim>> {
+  const page = await apiGet<RawPage<WarrantyClaim>>('/inventory/warranty/claims', params);
+  return { items: page.content, meta: page.meta };
+}
+
+/** Every claim ever filed against one product or unit, newest first. */
+export async function getWarrantyClaimsForTarget(
+  targetType: WarrantyTargetType,
+  targetId: string,
+): Promise<WarrantyClaim[]> {
+  return apiGet<WarrantyClaim[]>(`/inventory/warranty/targets/${targetType}/${targetId}/claims`);
+}
+
+/** Applies immediately — a claim records an external fact, it doesn't change stock. */
+export async function createWarrantyClaim(body: WarrantyClaimRequest): Promise<WarrantyClaim> {
+  return apiPost<WarrantyClaim>('/inventory/warranty/claims', body);
+}
+
+/** Records the supplier's answer: accepted (they pay) or rejected (we do). */
+export async function decideWarrantyClaim(
+  id: string,
+  body: WarrantyClaimDecisionRequest,
+): Promise<WarrantyClaim> {
+  return apiPost<WarrantyClaim>(`/inventory/warranty/claims/${id}/decision`, body);
+}
+
+export async function deleteWarrantyClaim(id: string): Promise<void> {
+  return apiDelete(`/inventory/warranty/claims/${id}`);
 }
 
 export async function getItemWarrantyExtensions(itemId: string): Promise<WarrantyExtension[]> {

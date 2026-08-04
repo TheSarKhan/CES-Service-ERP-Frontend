@@ -110,6 +110,8 @@ export interface InventoryItem {
   warrantyEndDate: string | null;
   /** Derived server-side; always NONE for serialized items, whose units carry the real dates. */
   warrantyStatus: WarrantyStatus;
+  /** Who a warranty claim on this product goes to. */
+  supplier: string | null;
   notes: string | null;
   isActive: boolean;
   createdAt: string;
@@ -130,6 +132,7 @@ export interface InventoryItemRequest {
   warrantyMonths?: number | null;
   warrantyStartDate?: string | null;
   warrantyEndDate?: string | null;
+  supplier?: string | null;
   notes?: string | null;
   isActive?: boolean;
 }
@@ -240,4 +243,108 @@ export interface WarrantySummary {
   expiredUnits: number;
   expiringSoonTotal: number;
   expiredTotal: number;
+  /** Claims sent to a supplier with no answer yet. */
+  openClaims: number;
+}
+
+// ── Unified warranty search ──────────────────────────────────────────────
+
+/** Whether a warranty search row is a whole product or one serialized unit. */
+export type WarrantyRecordType = 'ITEM' | 'UNIT';
+
+/**
+ * One warranty search result. Products (bought as a batch under one warranty) and serialized
+ * units come back in the same shape, so the list can show both — `recordType` says which.
+ */
+export interface WarrantyRecord {
+  /** Unit id on a UNIT row, item id on an ITEM row. */
+  recordId: string;
+  recordType: WarrantyRecordType;
+  itemId: string;
+  itemName: string;
+  itemSku: string;
+  /** Null on ITEM rows. */
+  serialNumber: string | null;
+  /** Null on ITEM rows — only units have a lifecycle status. */
+  unitStatus: InventoryUnitStatus | null;
+  nodeId: string;
+  barcode: string | null;
+  qrCode: string | null;
+  warrantyStartDate: string | null;
+  warrantyEndDate: string | null;
+  warrantyStatus: WarrantyStatus;
+  /** Negative once expired; null when there is no end date. */
+  daysRemaining: number | null;
+  supplier: string | null;
+  /** Stock on hand; null on UNIT rows. */
+  quantity: number | null;
+  unit: string;
+  /** Most recent claim, or null when nobody has chased this yet. */
+  latestClaim: WarrantyClaim | null;
+}
+
+export interface WarrantyRecordSearchParams {
+  search?: string;
+  recordType?: WarrantyRecordType;
+  warrantyStatus?: WarrantyStatus;
+  unitStatus?: InventoryUnitStatus;
+  supplier?: string;
+  endFrom?: string;
+  endTo?: string;
+  /** Shorthand for "expiring within N days"; ignored when endFrom/endTo are given. */
+  withinDays?: number;
+  page?: number;
+  size?: number;
+}
+
+// ── Warranty claims ──────────────────────────────────────────────────────
+
+/**
+ * ACCEPTED means the supplier covers the cost; REJECTED means we do. That distinction is the
+ * whole reason claims are tracked.
+ */
+export type WarrantyClaimStatus = 'SUBMITTED' | 'ACCEPTED' | 'REJECTED' | 'RESOLVED';
+
+export type WarrantyClaimResolution = 'REPLACED' | 'REPAIRED' | 'REFUNDED' | 'NONE';
+
+export interface WarrantyClaim {
+  id: string;
+  targetType: WarrantyTargetType;
+  targetId: string;
+  targetLabel: string | null;
+  itemId: string | null;
+  supplier: string | null;
+  claimNumber: string | null;
+  status: WarrantyClaimStatus;
+  resolution: WarrantyClaimResolution | null;
+  description: string | null;
+  decisionNotes: string | null;
+  submittedAt: string;
+  decidedAt: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WarrantyClaimRequest {
+  targetType: WarrantyTargetType;
+  targetId: string;
+  supplier?: string | null;
+  claimNumber?: string | null;
+  description?: string | null;
+  submittedAt?: string | null;
+}
+
+export interface WarrantyClaimDecisionRequest {
+  status: WarrantyClaimStatus;
+  resolution?: WarrantyClaimResolution | null;
+  decisionNotes?: string | null;
+  decidedAt?: string | null;
+}
+
+export interface WarrantyClaimListParams {
+  status?: WarrantyClaimStatus;
+  search?: string;
+  page?: number;
+  size?: number;
 }

@@ -13,7 +13,12 @@ import type {
   InventoryNodeRequest,
   InventoryUnitSearchParams,
   StockQuantityRequest,
+  WarrantyClaimDecisionRequest,
+  WarrantyClaimListParams,
+  WarrantyClaimRequest,
   WarrantyExtendRequest,
+  WarrantyRecordSearchParams,
+  WarrantyTargetType,
 } from '@/types/inventory';
 
 export const inventoryKeys = {
@@ -35,6 +40,14 @@ export const inventoryKeys = {
   warrantySummary: (branchId: string | null) => ['inventory', 'warranty', 'summary', branchId] as const,
   warrantyExtensions: (target: 'items' | 'units', id: string) =>
     ['inventory', 'warranty', target, id, 'extensions'] as const,
+  warrantyRecords: (branchId: string | null, params: WarrantyRecordSearchParams) =>
+    ['inventory', 'warranty', 'records', branchId, params] as const,
+  warrantySuppliers: (branchId: string | null) =>
+    ['inventory', 'warranty', 'suppliers', branchId] as const,
+  warrantyClaims: (branchId: string | null, params: WarrantyClaimListParams) =>
+    ['inventory', 'warranty', 'claims', branchId, params] as const,
+  warrantyTargetClaims: (targetType: string, targetId: string) =>
+    ['inventory', 'warranty', 'claims', 'target', targetType, targetId] as const,
 };
 
 // ── Layer nodes ──────────────────────────────────────────────────────────
@@ -347,6 +360,85 @@ export function useWarrantySummary() {
     queryFn: () => api.getWarrantySummary(),
     enabled: Boolean(activeBranchId),
     staleTime: 60_000,
+  });
+}
+
+/** The unified warranty search — units and whole products in one paged list. */
+export function useWarrantyRecords(params: WarrantyRecordSearchParams = {}) {
+  const activeBranchId = useAuthStore((s) => s.activeBranchId);
+  return useQuery({
+    queryKey: inventoryKeys.warrantyRecords(activeBranchId, params),
+    queryFn: () => api.searchWarrantyRecords(params),
+    enabled: Boolean(activeBranchId),
+    staleTime: 15_000,
+  });
+}
+
+export function useWarrantySuppliers() {
+  const activeBranchId = useAuthStore((s) => s.activeBranchId);
+  return useQuery({
+    queryKey: inventoryKeys.warrantySuppliers(activeBranchId),
+    queryFn: () => api.getWarrantySuppliers(),
+    enabled: Boolean(activeBranchId),
+    staleTime: 5 * 60_000,
+  });
+}
+
+// ── Warranty claims ──────────────────────────────────────────────────────
+
+export function useWarrantyClaims(params: WarrantyClaimListParams = {}) {
+  const activeBranchId = useAuthStore((s) => s.activeBranchId);
+  return useQuery({
+    queryKey: inventoryKeys.warrantyClaims(activeBranchId, params),
+    queryFn: () => api.getWarrantyClaims(params),
+    enabled: Boolean(activeBranchId),
+  });
+}
+
+export function useWarrantyTargetClaims(
+  targetType: WarrantyTargetType | null,
+  targetId: string | null,
+) {
+  return useQuery({
+    queryKey: inventoryKeys.warrantyTargetClaims(targetType ?? '', targetId ?? ''),
+    queryFn: () => api.getWarrantyClaimsForTarget(targetType as WarrantyTargetType, targetId as string),
+    enabled: Boolean(targetType && targetId),
+  });
+}
+
+/**
+ * Claims are not queued for approval — they document something that already happened with the
+ * supplier, so both mutations apply straight away and just refresh what's on screen.
+ */
+function useInvalidateClaims() {
+  const queryClient = useQueryClient();
+  return () => {
+    queryClient.invalidateQueries({ queryKey: ['inventory', 'warranty'] });
+  };
+}
+
+export function useCreateWarrantyClaim() {
+  const invalidate = useInvalidateClaims();
+  return useMutation({
+    mutationFn: (body: WarrantyClaimRequest) => api.createWarrantyClaim(body),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDecideWarrantyClaim() {
+  const invalidate = useInvalidateClaims();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: WarrantyClaimDecisionRequest }) =>
+      api.decideWarrantyClaim(id, body),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteWarrantyClaim() {
+  const invalidate = useInvalidateClaims();
+  return useMutation({
+    mutationFn: (id: string) => api.deleteWarrantyClaim(id),
+    onSuccess: invalidate,
   });
 }
 

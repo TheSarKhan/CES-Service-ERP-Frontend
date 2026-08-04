@@ -1,13 +1,20 @@
 'use client';
 
 import { useState } from 'react';
-import { History, ShieldCheck } from 'lucide-react';
-import { useItemWarrantyExtensions } from '@/hooks/use-inventory';
+import { FileWarning, History, ShieldCheck } from 'lucide-react';
+import { useItemWarrantyExtensions, useWarrantyTargetClaims } from '@/hooks/use-inventory';
 import { Button } from '@/components/ui/button';
-import { WarrantyStatusBadge } from '@/components/inventory/badges';
+import { Badge } from '@/components/ui/badge';
+import {
+  ClaimStatusBadge,
+  CLAIM_RESOLUTION_LABEL,
+  WarrantyStatusBadge,
+} from '@/components/inventory/badges';
 import { WarrantyExtendDialog } from '@/components/inventory/WarrantyExtendDialog';
+import { WarrantyClaimDialog } from '@/components/inventory/WarrantyClaimDialog';
+import { WarrantyClaimDecisionDialog } from '@/components/inventory/WarrantyClaimDecisionDialog';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
-import type { InventoryItem } from '@/types/inventory';
+import type { InventoryItem, WarrantyClaim } from '@/types/inventory';
 
 /**
  * Warranty block of the product detail dialog.
@@ -19,7 +26,15 @@ import type { InventoryItem } from '@/types/inventory';
 export function ItemWarrantySection({ item }: { item: InventoryItem }) {
   const [extendOpen, setExtendOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [claimOpen, setClaimOpen] = useState(false);
+  const [decisionClaim, setDecisionClaim] = useState<WarrantyClaim | null>(null);
   const { data: history } = useItemWarrantyExtensions(item.id, historyOpen);
+  // Only product-level claims: a serialized product's claims hang off individual units, and
+  // showing them here would attribute one unit's failure to the whole batch.
+  const { data: claims } = useWarrantyTargetClaims(
+    item.isSerialized ? null : 'INVENTORY_ITEM',
+    item.isSerialized ? null : item.id,
+  );
 
   const isSerialized = item.isSerialized;
   const hasWarranty = Boolean(item.warrantyEndDate) || Boolean(item.warrantyMonths);
@@ -38,9 +53,15 @@ export function ItemWarrantySection({ item }: { item: InventoryItem }) {
             Tarixçə
           </Button>
           {!isSerialized && (
-            <Button variant="outline" size="xs" onClick={() => setExtendOpen(true)}>
-              Uzat
-            </Button>
+            <>
+              <Button variant="ghost" size="xs" onClick={() => setClaimOpen(true)}>
+                <FileWarning className="h-3.5 w-3.5" />
+                Tələb aç
+              </Button>
+              <Button variant="outline" size="xs" onClick={() => setExtendOpen(true)}>
+                Uzat
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -62,7 +83,7 @@ export function ItemWarrantySection({ item }: { item: InventoryItem }) {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
           <div>
             <div className="text-xs text-muted-foreground">Müddət</div>
             <div className="mt-0.5 font-semibold">
@@ -77,6 +98,50 @@ export function ItemWarrantySection({ item }: { item: InventoryItem }) {
             <div className="text-xs text-muted-foreground">Bitmə</div>
             <div className="mt-0.5 font-semibold">{formatDate(item.warrantyEndDate)}</div>
           </div>
+          <div>
+            <div className="text-xs text-muted-foreground">Təchizatçı</div>
+            <div className="mt-0.5 font-semibold">{item.supplier || '—'}</div>
+          </div>
+        </div>
+      )}
+
+      {isSerialized && item.supplier && (
+        <div className="mt-2 text-sm">
+          <span className="text-xs text-muted-foreground">Təchizatçı: </span>
+          <span className="font-semibold">{item.supplier}</span>
+        </div>
+      )}
+
+      {!isSerialized && claims && claims.length > 0 && (
+        <div className="mt-3 border-t border-line pt-3">
+          <div className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+            Zəmanət tələbləri
+          </div>
+          <ul className="space-y-1.5">
+            {claims.map((claim) => (
+              <li key={claim.id}>
+                <button
+                  type="button"
+                  onClick={() => setDecisionClaim(claim)}
+                  className="flex w-full flex-wrap items-center gap-2 rounded-lg border border-line px-3 py-2 text-left text-sm transition-colors hover:border-graphite"
+                >
+                  <span className="font-semibold">{formatDate(claim.submittedAt)}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {claim.supplier || 'Təchizatçı göstərilməyib'}
+                    {claim.claimNumber ? ` · ${claim.claimNumber}` : ''}
+                  </span>
+                  <span className="ml-auto flex items-center gap-1.5">
+                    <ClaimStatusBadge status={claim.status} />
+                    {claim.resolution && (
+                      <Badge variant="mute" size="sm">
+                        {CLAIM_RESOLUTION_LABEL[claim.resolution]}
+                      </Badge>
+                    )}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -123,6 +188,21 @@ export function ItemWarrantySection({ item }: { item: InventoryItem }) {
         id={item.id}
         label={item.name}
         currentEndDate={item.warrantyEndDate}
+      />
+
+      <WarrantyClaimDialog
+        open={claimOpen}
+        onOpenChange={setClaimOpen}
+        targetType="INVENTORY_ITEM"
+        targetId={item.id}
+        targetLabel={item.name}
+        defaultSupplier={item.supplier}
+      />
+
+      <WarrantyClaimDecisionDialog
+        open={Boolean(decisionClaim)}
+        onOpenChange={(open) => !open && setDecisionClaim(null)}
+        claim={decisionClaim}
       />
     </div>
   );
