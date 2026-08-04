@@ -20,12 +20,9 @@ import type {
   InventoryUnitSearchParams,
   InventoryLot,
   InventoryLotRequest,
-  InventoryTransfer,
   StockAlertSummary,
   Stocktake,
   StocktakeStatus,
-  TransferRequest,
-  TransferStatus,
   StockMovement,
   StockMovementParams,
   StockQuantityRequest,
@@ -168,13 +165,19 @@ export async function deleteInventoryItem(id: string): Promise<ApprovalRequest> 
   return apiDelete<ApprovalRequest>(`/inventory/items/${id}`);
 }
 
-/** Relocates everything held at one folder to another; the source must be named. */
+/**
+ * Relocates stock from one folder to another; the source must be named.
+ *
+ * `quantity` omitted means the whole balance — which is also what a serialized product requires,
+ * since there the units are what move.
+ */
 export async function moveInventoryItem(
   id: string,
   fromNodeId: string,
   toNodeId: string,
+  quantity?: number,
 ): Promise<ApprovalRequest> {
-  return apiPost<ApprovalRequest>(`/inventory/items/${id}/move`, { fromNodeId, toNodeId });
+  return apiPost<ApprovalRequest>(`/inventory/items/${id}/move`, { fromNodeId, toNodeId, quantity });
 }
 
 export async function stockInInventoryItem(id: string, body: StockQuantityRequest): Promise<ApprovalRequest> {
@@ -285,28 +288,6 @@ export async function closeStocktake(id: string): Promise<Stocktake> {
 
 export async function cancelStocktake(id: string): Promise<Stocktake> {
   return apiPost<Stocktake>(`/inventory/stocktakes/${id}/cancel`, {});
-}
-
-// ── Transfers ────────────────────────────────────────────────────────────
-
-export async function getTransfers(
-  params: { status?: TransferStatus; page?: number; size?: number } = {},
-): Promise<PageResponse<InventoryTransfer>> {
-  const page = await apiGet<RawPage<InventoryTransfer>>('/inventory/transfers', params);
-  return { items: page.content, meta: page.meta };
-}
-
-/** Applies immediately — receiving is itself the second pair of eyes, so there is no queue. */
-export async function sendTransfer(body: TransferRequest): Promise<InventoryTransfer> {
-  return apiPost<InventoryTransfer>('/inventory/transfers', body);
-}
-
-export async function receiveTransfer(id: string): Promise<InventoryTransfer> {
-  return apiPost<InventoryTransfer>(`/inventory/transfers/${id}/receive`, {});
-}
-
-export async function cancelTransfer(id: string): Promise<InventoryTransfer> {
-  return apiPost<InventoryTransfer>(`/inventory/transfers/${id}/cancel`, {});
 }
 
 // ── Stock movements ──────────────────────────────────────────────────────

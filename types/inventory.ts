@@ -102,7 +102,6 @@ export interface StockAlertSummary {
 export interface InventorySettings {
   notificationEmails: string[];
   dailyDigestEnabled: boolean;
-  transferRequiresDifferentReceiver: boolean;
   /** False when the server has no SMTP host — the screen must say so. */
   mailConfigured: boolean;
 }
@@ -110,7 +109,6 @@ export interface InventorySettings {
 export interface InventorySettingsRequest {
   notificationEmails?: string[];
   dailyDigestEnabled?: boolean;
-  transferRequiresDifferentReceiver?: boolean;
 }
 
 /** One folder holding a product, and how much of it sits there. */
@@ -326,52 +324,14 @@ export interface Stocktake {
   lines: StocktakeLine[];
 }
 
-// ── Transfers ────────────────────────────────────────────────────────────
-
-/** IN_TRANSIT means it has left the source shelf but not yet reached the destination. */
-export type TransferStatus = 'IN_TRANSIT' | 'RECEIVED' | 'CANCELLED';
-
-export interface TransferLine {
-  itemId: string;
-  itemName: string | null;
-  itemSku: string | null;
-  unit: string | null;
-  quantity: number;
-}
-
-export interface InventoryTransfer {
-  id: string;
-  fromNodeId: string;
-  fromNodeName: string | null;
-  toNodeId: string;
-  toNodeName: string | null;
-  status: TransferStatus;
-  notes: string | null;
-  sentBy: string | null;
-  sentByName: string | null;
-  sentAt: string;
-  receivedBy: string | null;
-  receivedByName: string | null;
-  receivedAt: string | null;
-  cancelledAt: string | null;
-  lines: TransferLine[];
-  /** False for the sender when the branch requires a different person to receive. */
-  canReceive: boolean;
-}
-
-export interface TransferRequest {
-  fromNodeId: string;
-  toNodeId: string;
-  lines: { itemId: string; quantity: number }[];
-  notes?: string | null;
-}
-
 // ── Stock movements (ledger) ─────────────────────────────────────────────
 
 export type StockMovementType =
   | 'IN'
   | 'OUT'
   | 'ADJUST'
+  // The two halves of a relocation ("Köçür"). The names are historical — they are written into
+  // every existing ledger row and into the table's CHECK constraint.
   | 'TRANSFER_OUT'
   | 'TRANSFER_IN'
   | 'UNIT_IN'

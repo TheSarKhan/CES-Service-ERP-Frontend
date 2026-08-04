@@ -26,7 +26,6 @@ export function InventorySettingsPanel() {
   const [emails, setEmails] = useState<string[]>([]);
   const [draft, setDraft] = useState('');
   const [digestEnabled, setDigestEnabled] = useState(true);
-  const [strictTransfer, setStrictTransfer] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -34,7 +33,6 @@ export function InventorySettingsPanel() {
     if (!settings) return;
     setEmails(settings.notificationEmails);
     setDigestEnabled(settings.dailyDigestEnabled);
-    setStrictTransfer(settings.transferRequiresDifferentReceiver);
   }, [settings]);
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
@@ -61,7 +59,6 @@ export function InventorySettingsPanel() {
       await updateSettings.mutateAsync({
         notificationEmails: emails,
         dailyDigestEnabled: digestEnabled,
-        transferRequiresDifferentReceiver: strictTransfer,
       });
       setSaved(true);
     } catch (err) {
@@ -161,24 +158,6 @@ export function InventorySettingsPanel() {
             Əlavə et
           </Button>
         </div>
-      </div>
-
-      <div className="mb-5 rounded-lg border border-line p-4">
-        <div className="mb-3 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-          Transfer
-        </div>
-        <Field className="mb-0">
-          <Checkbox
-            checked={strictTransfer}
-            onChange={(e) => setStrictTransfer(e.target.checked)}
-          >
-            Transferi göndərəndən başqa şəxs qəbul etməlidir
-          </Checkbox>
-          <FieldHint>
-            Söndürsəniz, tək anbardarla işləyən filialda transfer bloklanmır — əvəzində «göndərdim,
-            özüm də qəbul etdim» mümkün olur.
-          </FieldHint>
-        </Field>
       </div>
 
       <div className="flex justify-end">

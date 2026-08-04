@@ -18,8 +18,8 @@ const TYPE_LABEL: Record<StockMovementType, string> = {
   IN: 'Giriş',
   OUT: 'Çıxış',
   ADJUST: 'Sayım düzəlişi',
-  TRANSFER_OUT: 'Transfer — çıxış',
-  TRANSFER_IN: 'Transfer — giriş',
+  TRANSFER_OUT: 'Köçürmə — çıxış',
+  TRANSFER_IN: 'Köçürmə — giriş',
   UNIT_IN: 'Vahid qeydiyyatı',
   UNIT_OUT: 'Vahid çıxışı',
 };
