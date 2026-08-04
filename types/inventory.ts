@@ -139,6 +139,10 @@ export interface InventoryItem {
   locations: StockLocation[];
   purchasePrice: number;
   isSerialized: boolean;
+  /** Batch-tracked; never true at the same time as isSerialized. */
+  isLotTracked: boolean;
+  /** Days before expiry to start warning; null falls back to the warranty horizon (30). */
+  expiryWarningDays: number | null;
   attributes: Record<string, unknown>;
   /** Warranty length in months. On a serialized item this is the default for its new units. */
   warrantyMonths: number | null;
@@ -171,6 +175,8 @@ export interface InventoryItemRequest {
   quantity: number;
   purchasePrice: number;
   isSerialized?: boolean;
+  isLotTracked?: boolean;
+  expiryWarningDays?: number | null;
   attributes?: Record<string, unknown>;
   warrantyMonths?: number | null;
   warrantyStartDate?: string | null;
@@ -253,6 +259,35 @@ export interface InventoryUnitSearchParams {
   size?: number;
   sort?: string;
   dir?: 'asc' | 'desc';
+}
+
+// ── Lots / expiry ────────────────────────────────────────────────────────
+
+/** One batch of a product at one folder, with its own expiry date. */
+export interface InventoryLot {
+  id: string;
+  itemId: string;
+  itemName: string | null;
+  nodeId: string;
+  nodeName: string | null;
+  lotNumber: string;
+  quantity: number;
+  /** Null for batches that never expire; they sort last under FEFO. */
+  expiryDate: string | null;
+  receivedDate: string;
+  notes: string | null;
+  /** Reuses the warranty vocabulary — "running out of time" is the same idea. */
+  expiryStatus: WarrantyStatus;
+  daysRemaining: number | null;
+}
+
+export interface InventoryLotRequest {
+  nodeId: string;
+  lotNumber: string;
+  quantity: number;
+  expiryDate?: string | null;
+  receivedDate?: string | null;
+  notes?: string | null;
 }
 
 // ── Stocktakes ───────────────────────────────────────────────────────────

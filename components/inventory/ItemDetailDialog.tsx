@@ -38,6 +38,7 @@ import { renderAttributeValue } from '@/components/inventory/AttributeValue';
 import { ApprovalSubmittedDialog } from '@/components/approval/ApprovalSubmittedDialog';
 import { ItemWarrantySection } from '@/components/inventory/ItemWarrantySection';
 import { ItemMovementsPanel } from '@/components/inventory/ItemMovementsPanel';
+import { ItemLotsPanel } from '@/components/inventory/ItemLotsPanel';
 import { cn } from '@/lib/utils';
 import type { InventoryFieldType } from '@/types/inventory';
 
@@ -114,6 +115,7 @@ export function ItemDetailDialog({
     { key: 'zemanet', label: 'Zəmanət' },
     { key: 'hereketler', label: 'Hərəkətlər' },
     ...(item.isSerialized ? [{ key: 'vahidler', label: 'Vahidlər' }] : []),
+    ...(item.isLotTracked ? [{ key: 'partiyalar', label: 'Partiyalar' }] : []),
   ];
   // Seçilmiş tab siyahıdan çıxıbsa (məsələn sahələr silinib) ilk taba qayıdırıq.
   const activeTab = tabItems.some((t) => t.key === tab) ? tab : 'umumi';
@@ -263,6 +265,10 @@ export function ItemDetailDialog({
           )}
 
           {activeTab === 'vahidler' && item.isSerialized && <ItemUnitsPanel item={item} />}
+
+          {activeTab === 'partiyalar' && item.isLotTracked && (
+            <ItemLotsPanel item={item} contextNodeId={focusedNodeId} />
+          )}
 
           {/* Actions live at the very bottom so the popup reads as information first, tools after. */}
           <div className="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">

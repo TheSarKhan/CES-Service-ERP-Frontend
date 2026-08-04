@@ -38,6 +38,11 @@ const itemFormSchema = z.object({
   quantity: z.coerce.number().min(0, 'Mənfi ola bilməz'),
   purchasePrice: z.coerce.number().min(0, 'Mənfi ola bilməz'),
   isSerialized: z.boolean().optional(),
+  isLotTracked: z.boolean().optional(),
+  expiryWarningDays: z.preprocess(
+    (v) => (v === '' || v === null ? undefined : v),
+    z.coerce.number().int().min(1).optional(),
+  ),
   // Empty string -> undefined so an untouched warranty field stays null rather than becoming 0.
   warrantyMonths: z.preprocess(
     (v) => (v === '' || v === null ? undefined : v),
@@ -103,6 +108,8 @@ export function ItemFormDialog({
       quantity: 0,
       purchasePrice: 0,
       isSerialized: false,
+      isLotTracked: false,
+      expiryWarningDays: undefined,
       warrantyMonths: undefined,
       warrantyStartDate: '',
       warrantyEndDate: '',
@@ -120,6 +127,9 @@ export function ItemFormDialog({
   );
 
   const watchIsSerialized = watch('isSerialized');
+  // A product is serialized, batch-tracked or plain — never two at once, because the truth about
+  // its quantity has to live in exactly one place.
+  const watchIsLotTracked = watch('isLotTracked');
   const currentUnit = watch('unit');
   const unitOptions = useMemo(
     () => (currentUnit && !UNIT_OPTIONS.includes(currentUnit) ? [currentUnit, ...UNIT_OPTIONS] : UNIT_OPTIONS),
@@ -140,6 +150,8 @@ export function ItemFormDialog({
         quantity: 0, // opening balance only — an edit never moves stock
         purchasePrice: editingItem.purchasePrice,
         isSerialized: editingItem.isSerialized,
+        isLotTracked: editingItem.isLotTracked,
+        expiryWarningDays: editingItem.expiryWarningDays ?? undefined,
         warrantyMonths: editingItem.warrantyMonths ?? undefined,
         warrantyStartDate: editingItem.warrantyStartDate ?? '',
         warrantyEndDate: editingItem.warrantyEndDate ?? '',
@@ -160,6 +172,8 @@ export function ItemFormDialog({
         quantity: 0,
         purchasePrice: 0,
         isSerialized: false,
+        isLotTracked: false,
+        expiryWarningDays: undefined,
         warrantyMonths: undefined,
         warrantyStartDate: '',
         warrantyEndDate: '',
@@ -194,6 +208,8 @@ export function ItemFormDialog({
       quantity: values.quantity,
       purchasePrice: values.purchasePrice,
       isSerialized: values.isSerialized,
+      isLotTracked: values.isLotTracked,
+      expiryWarningDays: values.expiryWarningDays ?? null,
       attributes,
       warrantyMonths: values.warrantyMonths ?? null,
       warrantyStartDate: values.warrantyStartDate || null,
@@ -342,8 +358,18 @@ export function ItemFormDialog({
               )}
             </Field>
             <Field className="flex items-end pb-2">
-              <Checkbox disabled={isEditing} {...register('isSerialized')}>
+              <Checkbox
+                disabled={isEditing || watchIsLotTracked}
+                {...register('isSerialized')}
+              >
                 Seriya nömrəli / zəmanətli (fərdi vahidlər)
+              </Checkbox>
+              <Checkbox
+                className="mt-2"
+                disabled={isEditing || watchIsSerialized}
+                {...register('isLotTracked')}
+              >
+                Partiya (lot) izlənir — son istifadə tarixi ilə
               </Checkbox>
             </Field>
           </div>
@@ -397,6 +423,22 @@ export function ItemFormDialog({
             )}
 
           </div>
+
+          {watchIsLotTracked && (
+            <Field className="mt-2">
+              <Label htmlFor="item-expiry-warning">Bitmə xəbərdarlığı (gün)</Label>
+              <Input
+                id="item-expiry-warning"
+                type="number"
+                min="1"
+                placeholder="30"
+                {...register('expiryWarningDays')}
+              />
+              <FieldHint>
+                Boş qalsa 30 gün — zəmanətdəki ilə eyni. Kimyəvi maddəyə daha uzun verilə bilər.
+              </FieldHint>
+            </Field>
+          )}
 
           {/* Thresholds compare against the TOTAL across folders — an empty shelf while forty sit
               in the next aisle is a moving problem, not a buying one. */}

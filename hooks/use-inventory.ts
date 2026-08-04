@@ -12,6 +12,7 @@ import type {
   InventoryItemUnitUpdateRequest,
   InventoryNodeRequest,
   InventorySettingsRequest,
+  InventoryLotRequest,
   StocktakeStatus,
   TransferRequest,
   TransferStatus,
@@ -46,6 +47,9 @@ export const inventoryKeys = {
   lowStock: (branchId: string | null, criticalOnly: boolean, page: number) =>
     ['inventory', 'stock-alerts', branchId, criticalOnly, page] as const,
   settings: (branchId: string | null) => ['inventory', 'settings', branchId] as const,
+  itemLots: (itemId: string) => ['inventory', 'lots', 'item', itemId] as const,
+  expiringLots: (branchId: string | null, withinDays: number) =>
+    ['inventory', 'lots', 'expiring', branchId, withinDays] as const,
   stocktakes: (branchId: string | null, status: StocktakeStatus | undefined, page: number) =>
     ['inventory', 'stocktakes', branchId, status ?? 'all', page] as const,
   stocktake: (id: string) => ['inventory', 'stocktakes', 'detail', id] as const,
@@ -403,6 +407,58 @@ export function useUpdateInventorySettings() {
   return useMutation({
     mutationFn: (body: InventorySettingsRequest) => api.updateInventorySettings(body),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['inventory', 'settings'] }),
+  });
+}
+
+// ── Lots / expiry ────────────────────────────────────────────────────────
+
+export function useItemLots(itemId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: inventoryKeys.itemLots(itemId ?? ''),
+    queryFn: () => api.getItemLots(itemId as string),
+    enabled: enabled && Boolean(itemId),
+  });
+}
+
+export function useExpiringLots(withinDays = 30, page = 1, size = 20) {
+  const activeBranchId = useAuthStore((s) => s.activeBranchId);
+  return useQuery({
+    queryKey: [...inventoryKeys.expiringLots(activeBranchId, withinDays), page] as const,
+    queryFn: () => api.getExpiringLots({ withinDays, page, size }),
+    enabled: Boolean(activeBranchId),
+  });
+}
+
+/** Lots move stock, so the whole inventory tree is refreshed. */
+function useInvalidateLots() {
+  const queryClient = useQueryClient();
+  return () => queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+}
+
+export function useReceiveLot() {
+  const invalidate = useInvalidateLots();
+  return useMutation({
+    mutationFn: ({ itemId, body }: { itemId: string; body: InventoryLotRequest }) =>
+      api.receiveLot(itemId, body),
+    onSuccess: invalidate,
+  });
+}
+
+export function useConsumeLot() {
+  const invalidate = useInvalidateLots();
+  return useMutation({
+    mutationFn: ({ lotId, quantity, reason }: { lotId: string; quantity: number; reason?: string }) =>
+      api.consumeLot(lotId, quantity, reason),
+    onSuccess: invalidate,
+  });
+}
+
+export function useWriteOffLot() {
+  const invalidate = useInvalidateLots();
+  return useMutation({
+    mutationFn: ({ lotId, reason }: { lotId: string; reason?: string }) =>
+      api.writeOffLot(lotId, reason),
+    onSuccess: invalidate,
   });
 }
 

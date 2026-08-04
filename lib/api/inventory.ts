@@ -18,6 +18,8 @@ import type {
   InventorySettings,
   InventorySettingsRequest,
   InventoryUnitSearchParams,
+  InventoryLot,
+  InventoryLotRequest,
   InventoryTransfer,
   StockAlertSummary,
   Stocktake,
@@ -209,6 +211,47 @@ export async function updateInventorySettings(
   body: InventorySettingsRequest,
 ): Promise<InventorySettings> {
   return apiPut<InventorySettings>('/inventory/settings', body);
+}
+
+// ── Lots / expiry ────────────────────────────────────────────────────────
+
+export async function getItemLots(itemId: string): Promise<InventoryLot[]> {
+  return apiGet<InventoryLot[]>(`/inventory/items/${itemId}/lots`);
+}
+
+/** The batch FEFO would pick at a folder; null when there is nothing to pick. */
+export async function getLotSuggestion(
+  itemId: string,
+  nodeId: string,
+): Promise<InventoryLot | null> {
+  return apiGet<InventoryLot | null>(`/inventory/items/${itemId}/lots/suggestion`, { nodeId });
+}
+
+export async function receiveLot(
+  itemId: string,
+  body: InventoryLotRequest,
+): Promise<InventoryLot> {
+  return apiPost<InventoryLot>(`/inventory/items/${itemId}/lots`, body);
+}
+
+export async function consumeLot(
+  lotId: string,
+  quantity: number,
+  reason?: string,
+): Promise<InventoryLot> {
+  return apiPost<InventoryLot>(`/inventory/lots/${lotId}/consume`, { quantity, reason });
+}
+
+export async function writeOffLot(lotId: string, reason?: string): Promise<void> {
+  const query = reason ? `?reason=${encodeURIComponent(reason)}` : '';
+  return apiDelete(`/inventory/lots/${lotId}${query}`);
+}
+
+export async function getExpiringLots(
+  params: { withinDays?: number; page?: number; size?: number } = {},
+): Promise<PageResponse<InventoryLot>> {
+  const page = await apiGet<RawPage<InventoryLot>>('/inventory/lots/expiring', params);
+  return { items: page.content, meta: page.meta };
 }
 
 // ── Stocktakes ───────────────────────────────────────────────────────────
