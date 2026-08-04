@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/dialog';
 import { ItemNameCell, renderAttributeValue } from '@/components/inventory/AttributeValue';
 import { ItemDetailDialog } from '@/components/inventory/ItemDetailDialog';
-import type { InventoryFieldType } from '@/types/inventory';
+import type { InventoryFieldType, InventoryItem } from '@/types/inventory';
 
 const PAGE_SIZE = 20;
 
@@ -40,13 +40,16 @@ const SYSTEM_FIELD_COLUMNS: { key: string; label: string; type: InventoryFieldTy
  * "Bax" opens a popup with the node's full breadcrumb (fetched lazily, only while open); "Get"
  * navigates to the Anbar browser pre-drilled down to that exact node.
  */
-function LocationCell({ nodeId }: { nodeId: string }) {
+function LocationCell({ item }: { item: InventoryItem }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
-  const { data: path, isLoading } = useInventoryNodePath(nodeId, open);
+  // A product may be held in several folders. The popup lists them all; the breadcrumb is only
+  // fetched for the first, since a path per row would be one request per location.
+  const primaryNodeId = item.locations[0]?.nodeId ?? null;
+  const { data: path, isLoading } = useInventoryNodePath(primaryNodeId, open);
   const currentNode = path?.[path.length - 1];
 
-  function handleGet() {
+  function handleGet(nodeId: string) {
     setOpen(false);
     router.push(`/warehouse?nodeId=${nodeId}`);
   }
@@ -74,11 +77,37 @@ function LocationCell({ nodeId }: { nodeId: string }) {
               ))}
             </div>
           )}
+          {item.locations.length > 1 && (
+            <div className="mt-3 border-t border-line pt-3">
+              <div className="mb-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                Bütün yerlər
+              </div>
+              <ul className="space-y-1">
+                {item.locations.map((location) => (
+                  <li key={location.nodeId}>
+                    <button
+                      type="button"
+                      onClick={() => handleGet(location.nodeId)}
+                      className="flex w-full items-center justify-between rounded-lg border border-line px-3 py-2 text-sm transition-colors hover:border-graphite"
+                    >
+                      <span className="font-semibold">{location.nodeName ?? 'Qovluq'}</span>
+                      <span className="mono">{location.quantity}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
               Bağla
             </Button>
-            <Button type="button" variant="primary" onClick={handleGet} disabled={!currentNode}>
+            <Button
+              type="button"
+              variant="primary"
+              onClick={() => primaryNodeId && handleGet(primaryNodeId)}
+              disabled={!currentNode}
+            >
               Get
             </Button>
           </DialogFooter>
@@ -199,16 +228,15 @@ export function ProductSearchPanel() {
                   <td className="mono text-muted-foreground">{item.barcode ?? '—'}</td>
                   <td>{categories?.find((c) => c.id === item.categoryId)?.name ?? '—'}</td>
                   <td className="r">
-                    {item.isSerialized ? (
-                      <Badge variant="info" size="sm">
+                    {item.totalQuantity}
+                    {item.isSerialized && (
+                      <Badge variant="info" size="sm" className="ml-1.5">
                         Seriyalı
                       </Badge>
-                    ) : (
-                      item.quantity
                     )}
                   </td>
                   <td>
-                    <LocationCell nodeId={item.nodeId} />
+                    <LocationCell item={item} />
                   </td>
                   <td className="r">
                     <Button

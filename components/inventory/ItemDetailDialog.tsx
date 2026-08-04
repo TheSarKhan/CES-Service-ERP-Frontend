@@ -37,12 +37,18 @@ import { QrCodeDialog } from '@/components/inventory/QrCodeDialog';
 import { renderAttributeValue } from '@/components/inventory/AttributeValue';
 import { ApprovalSubmittedDialog } from '@/components/approval/ApprovalSubmittedDialog';
 import { ItemWarrantySection } from '@/components/inventory/ItemWarrantySection';
+import { cn } from '@/lib/utils';
 import type { InventoryFieldType } from '@/types/inventory';
 
 export interface ItemDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   itemId: string | null;
+  /**
+   * Folder the dialog was opened from. Stock actions default to it, so browsing the warehouse and
+   * acting on what is in front of you never asks which shelf you meant.
+   */
+  contextNodeId?: string | null;
 }
 
 /** One label/value pair in the detail grid. */
@@ -60,7 +66,12 @@ function isWideField(fieldType: InventoryFieldType): boolean {
   return fieldType === 'TEXTAREA' || fieldType === 'IMAGE' || fieldType === 'MULTI_IMAGE';
 }
 
-export function ItemDetailDialog({ open, onOpenChange, itemId }: ItemDetailDialogProps) {
+export function ItemDetailDialog({
+  open,
+  onOpenChange,
+  itemId,
+  contextNodeId,
+}: ItemDetailDialogProps) {
   const { data: item } = useInventoryItem(itemId);
   const { data: categories } = useInventoryCategories();
   const deleteItem = useDeleteInventoryItem();
@@ -70,11 +81,24 @@ export function ItemDetailDialog({ open, onOpenChange, itemId }: ItemDetailDialo
   const [nodeQrOpen, setNodeQrOpen] = useState(false);
   const [stockKind, setStockKind] = useState<'in' | 'out' | 'adjust' | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [approvalSent, setApprovalSent] = useState(false);
+  // `closeAfter` because deleting leaves nothing to come back to, while a stock request does —
+  // and the confirmation cannot be shown after the parent closes: this whole dialog unmounts once
+  // its item is gone, taking any confirmation inside it along.
+  const [approvalSent, setApprovalSent] = useState<{ title: string; closeAfter: boolean } | null>(
+    null,
+  );
   const [tab, setTab] = useState('umumi');
 
   // Hook order must stay stable, so this runs before the early return — it self-disables on null.
-  const { data: nodePath } = useInventoryNodePath(item?.nodeId ?? null, open && Boolean(item));
+  // A product can be in several folders; the breadcrumb follows the one you came from, falling
+  // back to its only location. With several and no context there is no single path to show.
+  const focusedNodeId =
+    contextNodeId && item?.locations.some((l) => l.nodeId === contextNodeId)
+      ? contextNodeId
+      : item?.locations.length === 1
+        ? item.locations[0].nodeId
+        : null;
+  const { data: nodePath } = useInventoryNodePath(focusedNodeId, open && Boolean(item));
 
   if (!item) return null;
   // Last crumb is the leaf the product actually sits in — the one worth labelling.
@@ -97,8 +121,7 @@ export function ItemDetailDialog({ open, onOpenChange, itemId }: ItemDetailDialo
     try {
       // Deferred: this only queues the deletion for a second person to approve.
       await deleteItem.mutateAsync(item!.id);
-      onOpenChange(false);
-      setApprovalSent(true);
+      setApprovalSent({ title: 'Məhsul silinməsi', closeAfter: true });
     } catch (error) {
       setDeleteError(
         error instanceof ApiRequestError && error.code === 'ITEM_HAS_STOCK'
@@ -139,37 +162,69 @@ export function ItemDetailDialog({ open, onOpenChange, itemId }: ItemDetailDialo
             </DetailRow>
             <DetailRow label="Ölçü vahidi">{item.unit}</DetailRow>
             <DetailRow label="Alış qiyməti">{formatMoney(item.purchasePrice)}</DetailRow>
-            <DetailRow label="Miqdar">{item.isSerialized ? 'Seriyalı' : item.quantity}</DetailRow>
+            <DetailRow label="Cəmi miqdar">
+              {item.totalQuantity} {item.unit}
+            </DetailRow>
           </div>
 
           <div className="mb-4">
-            <div className="text-xs text-muted-foreground">Yerləşdiyi yer</div>
-            <div className="mt-1 flex flex-wrap items-center gap-1 text-sm">
-              <span className="font-semibold text-gold">Anbar</span>
-              {nodePath ? (
-                nodePath.map((node) => (
-                  <span key={node.id} className="flex items-center gap-1">
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="font-semibold">{node.name}</span>
-                  </span>
-                ))
-              ) : (
-                <span className="text-muted-foreground">yüklənir...</span>
-              )}
-              {/* The shelf's own label, reachable from the product that sits on it — someone
-                  holding the box needs the QR of where it goes back, not only of the box. */}
-              {containingNode && (
-                <button
-                  type="button"
-                  onClick={() => setNodeQrOpen(true)}
-                  className="btn btn-ghost btn-xs ml-1"
-                  title={`${containingNode.name} qovluğunun QR kodu`}
-                >
-                  <QrCode className="h-3.5 w-3.5" />
-                  Qovluğun QR-ı
-                </button>
-              )}
+            <div className="text-xs text-muted-foreground">
+              {item.locations.length > 1 ? 'Yerləşdiyi yerlər' : 'Yerləşdiyi yer'}
             </div>
+
+            {/* A full breadcrumb only makes sense for one folder. With several, the path of one of
+                them would read as the product's location and quietly hide the rest. */}
+            {focusedNodeId && (
+              <div className="mt-1 flex flex-wrap items-center gap-1 text-sm">
+                <span className="font-semibold text-gold">Anbar</span>
+                {nodePath ? (
+                  nodePath.map((node) => (
+                    <span key={node.id} className="flex items-center gap-1">
+                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="font-semibold">{node.name}</span>
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-muted-foreground">yüklənir...</span>
+                )}
+                {/* The shelf's own label, reachable from the product that sits on it — someone
+                    holding the box needs the QR of where it goes back, not only of the box. */}
+                {containingNode && (
+                  <button
+                    type="button"
+                    onClick={() => setNodeQrOpen(true)}
+                    className="btn btn-ghost btn-xs ml-1"
+                    title={`${containingNode.name} qovluğunun QR kodu`}
+                  >
+                    <QrCode className="h-3.5 w-3.5" />
+                    Qovluğun QR-ı
+                  </button>
+                )}
+              </div>
+            )}
+
+            {item.locations.length === 0 ? (
+              <p className="mt-1 text-sm text-muted-foreground">
+                Bu məhsul heç bir qovluqda saxlanılmır.
+              </p>
+            ) : (
+              <ul className="mt-2 space-y-1">
+                {item.locations.map((location) => (
+                  <li
+                    key={location.nodeId}
+                    className={cn(
+                      'flex items-center justify-between rounded-lg border border-line px-3 py-2 text-sm',
+                      location.nodeId === focusedNodeId && 'border-gold bg-gold-50',
+                    )}
+                  >
+                    <span className="font-semibold">{location.nodeName ?? 'Qovluq'}</span>
+                    <span className="mono">
+                      {location.quantity} {item.unit}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           <div className="mb-4">
@@ -246,10 +301,15 @@ export function ItemDetailDialog({ open, onOpenChange, itemId }: ItemDetailDialo
       <ItemFormDialog
         open={editOpen}
         onOpenChange={setEditOpen}
-        nodeId={item.nodeId}
+        nodeId={focusedNodeId ?? item.locations[0]?.nodeId ?? ''}
         editingItem={item}
       />
-      <MoveItemDialog open={moveOpen} onOpenChange={setMoveOpen} item={item} />
+      <MoveItemDialog
+        open={moveOpen}
+        onOpenChange={setMoveOpen}
+        item={item}
+        contextNodeId={focusedNodeId}
+      />
       <QrCodeDialog open={qrOpen} onOpenChange={setQrOpen} title={item.name} value={item.qrCode} />
       {containingNode && (
         <QrCodeDialog
@@ -259,10 +319,17 @@ export function ItemDetailDialog({ open, onOpenChange, itemId }: ItemDetailDialo
           value={containingNode.qrCode}
         />
       )}
+      {/* Owned here rather than by the stock dialog: that one unmounts the moment it closes, and
+          a confirmation living inside it would vanish with it. */}
       <ApprovalSubmittedDialog
-        open={approvalSent}
-        onOpenChange={setApprovalSent}
-        description="Məhsul silinməsi"
+        open={Boolean(approvalSent)}
+        onOpenChange={(open) => {
+          if (open) return;
+          const closeParent = approvalSent?.closeAfter;
+          setApprovalSent(null);
+          if (closeParent) onOpenChange(false);
+        }}
+        description={approvalSent?.title ?? ''}
       />
       {stockKind && (
         <StockOperationDialog
@@ -270,6 +337,8 @@ export function ItemDetailDialog({ open, onOpenChange, itemId }: ItemDetailDialo
           onOpenChange={(open) => !open && setStockKind(null)}
           kind={stockKind}
           item={item}
+          contextNodeId={focusedNodeId}
+          onSubmitted={(title) => setApprovalSent({ title, closeAfter: false })}
         />
       )}
     </>

@@ -269,7 +269,8 @@ export function useDeleteInventoryItem() {
 export function useMoveInventoryItem() {
   const invalidate = useInvalidateItems();
   return useMutation({
-    mutationFn: ({ id, nodeId }: { id: string; nodeId: string }) => api.moveInventoryItem(id, nodeId),
+    mutationFn: ({ id, fromNodeId, toNodeId }: { id: string; fromNodeId: string; toNodeId: string }) =>
+      api.moveInventoryItem(id, fromNodeId, toNodeId),
     onSuccess: invalidate,
   });
 }

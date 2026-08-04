@@ -127,7 +127,7 @@ export function ItemFormDialog({
         sku: editingItem.sku,
         barcode: editingItem.barcode ?? '',
         unit: editingItem.unit,
-        quantity: editingItem.quantity,
+        quantity: 0, // opening balance only — an edit never moves stock
         purchasePrice: editingItem.purchasePrice,
         isSerialized: editingItem.isSerialized,
         warrantyMonths: editingItem.warrantyMonths ?? undefined,
@@ -317,7 +317,13 @@ export function ItemFormDialog({
                 error={Boolean(errors.quantity)}
                 {...register('quantity')}
               />
-              {errors.quantity && <FieldError>{errors.quantity.message}</FieldError>}
+              {errors.quantity ? (
+                <FieldError>{errors.quantity.message}</FieldError>
+              ) : (
+                !isEditing && (
+                  <FieldHint>Bu qovluğa yazılacaq açılış qalığı.</FieldHint>
+                )
+              )}
             </Field>
             <Field className="flex items-end pb-2">
               <Checkbox disabled={isEditing} {...register('isSerialized')}>

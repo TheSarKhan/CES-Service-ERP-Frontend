@@ -12,6 +12,7 @@ import { Pagination } from '@/components/ui/pagination';
 import { ItemFormDialog } from '@/components/inventory/ItemFormDialog';
 import { ItemDetailDialog } from '@/components/inventory/ItemDetailDialog';
 import { ItemNameCell, renderAttributeValue } from '@/components/inventory/AttributeValue';
+import { locationSummary, quantityAt } from '@/lib/utils/stock';
 import type { InventoryCategory, InventoryNode } from '@/types/inventory';
 
 const SECTION_PAGE_SIZE = 10;
@@ -115,12 +116,17 @@ function CategorySection({
                       </td>
                     ))}
                     <td className="r">
-                      {item.isSerialized ? (
-                        <Badge variant="info" size="sm">
-                          Seriyalı
-                        </Badge>
-                      ) : (
-                        item.quantity
+                      {/* Quantity *here*, not everywhere: this table is a view of one shelf, and
+                          showing the global total would misreport what is actually in front of
+                          you. The product card shows the full picture. */}
+                      {quantityAt(item, node.id)}
+                      {item.locations.length > 1 && (
+                        <span
+                          className="ml-1.5 text-xs text-muted-foreground"
+                          title={locationSummary(item)}
+                        >
+                          / {item.totalQuantity} cəmi
+                        </span>
                       )}
                     </td>
                     <td className="r">
@@ -320,6 +326,7 @@ export function CategorizedItemTable({
         open={Boolean(selectedItemId)}
         onOpenChange={(open) => !open && setSelectedItemId(null)}
         itemId={selectedItemId}
+        contextNodeId={node.id}
       />
     </div>
   );

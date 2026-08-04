@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { TableWrap } from '@/components/ui/table';
 import { ScanLocation } from '@/components/inventory/scan/ScanLocation';
 import { ItemNameCell } from '@/components/inventory/AttributeValue';
+import { quantityAt } from '@/lib/utils/stock';
 
 const ITEM_PAGE_SIZE = 50;
 
@@ -138,7 +139,7 @@ export function ScanNodeView({ nodeId }: { nodeId: string }) {
                           Seriyalı
                         </Badge>
                       ) : (
-                        `${item.quantity} ${item.unit}`
+                        `${quantityAt(item, nodeId)} ${item.unit}`
                       )}
                     </td>
                   </tr>

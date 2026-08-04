@@ -25,6 +25,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { useInventoryNode } from '@/hooks/use-inventory';
 import { ApiRequestError } from '@/lib/api/client';
 import { formatDateTime } from '@/lib/utils/format';
 import { cn } from '@/lib/utils';
@@ -81,6 +82,8 @@ const HIDDEN_DIFF_KEYS = new Set([
   'createdBy',
   'updatedBy',
   'hasChildren',
+  // Stock is shown by the dedicated block, and a raw array of rows in a diff cell is unreadable.
+  'locations',
 ]);
 
 /**
@@ -96,6 +99,10 @@ const FIELD_LABELS: Record<string, string> = {
   barcode: 'Barkod',
   unit: 'Ölçü vahidi',
   quantity: 'Miqdar',
+  totalQuantity: 'Cəmi miqdar',
+  supplier: 'Təchizatçı',
+  fromNodeId: 'Mənbə qovluq',
+  toNodeId: 'Təyinat qovluq',
   purchasePrice: 'Alış qiyməti',
   isSerialized: 'Seriyalı',
   isActive: 'Aktiv',
@@ -141,6 +148,41 @@ function toNumber(value: unknown): number | null {
 
 const STOCK_OPERATIONS = new Set<ApprovalOperation>(['STOCK_IN', 'STOCK_OUT', 'STOCK_ADJUST']);
 
+/** The snapshot's stock rows, when it has any. */
+function locationsOf(before: Record<string, unknown>): Record<string, unknown>[] {
+  return Array.isArray(before.locations) ? (before.locations as Record<string, unknown>[]) : [];
+}
+
+/**
+ * Stock before the operation — at the folder the request targets, not across the warehouse. A
+ * product held in three places has three balances, and only one of them is about to move.
+ *
+ * Falls back to the old snapshot shape so requests parked before products became multi-location
+ * still render instead of silently dropping to the generic diff.
+ */
+function balanceAtTargetNode(
+  before: Record<string, unknown>,
+  payload: Record<string, unknown>,
+): number | null {
+  const nodeId = payload.nodeId;
+  if (typeof nodeId === 'string') {
+    const match = locationsOf(before).find((location) => location.nodeId === nodeId);
+    // No row yet means the product has never been kept there — zero, not unknown.
+    return match ? toNumber(match.quantity) : 0;
+  }
+  return toNumber(before.quantity);
+}
+
+function targetFolderName(
+  before: Record<string, unknown>,
+  payload: Record<string, unknown>,
+): string | null {
+  const nodeId = payload.nodeId;
+  if (typeof nodeId !== 'string') return null;
+  const match = locationsOf(before).find((location) => location.nodeId === nodeId);
+  return typeof match?.nodeName === 'string' ? match.nodeName : null;
+}
+
 /**
  * Stock quantity after the operation is applied — mirrors `InventoryItemService`: stock-in adds,
  * stock-out subtracts, a count correction replaces. Safe to compute here because a pending
@@ -161,12 +203,20 @@ function resultingQuantity(operation: ApprovalOperation, before: number, amount:
 function StockDiff({ request }: { request: ApprovalRequest }) {
   const before = (request.beforeSnapshot ?? {}) as Record<string, unknown>;
   const payload = (request.payload ?? {}) as Record<string, unknown>;
+  const snapshotName = targetFolderName(before, payload);
 
-  const currentQuantity = toNumber(before.quantity);
+  // Bringing goods into a folder the product has never been kept in is the one case the snapshot
+  // cannot name — there is no stock row for it yet — so the folder is fetched by id.
+  const { data: targetNode } = useInventoryNode(
+    !snapshotName && typeof payload.nodeId === 'string' ? payload.nodeId : null,
+  );
+
+  const currentQuantity = balanceAtTargetNode(before, payload);
   const amount = toNumber(payload.quantity);
   if (currentQuantity === null || amount === null) return null;
 
   const unit = typeof before.unit === 'string' ? before.unit : '';
+  const folderName = snapshotName ?? targetNode?.name ?? null;
   const result = resultingQuantity(request.operation, currentQuantity, amount);
   const isAdjust = request.operation === 'STOCK_ADJUST';
   const sign = request.operation === 'STOCK_IN' ? '+' : '−';
@@ -175,6 +225,14 @@ function StockDiff({ request }: { request: ApprovalRequest }) {
 
   return (
     <div>
+      {/* Which shelf, spelled out: the same product can sit in several, and approving "+50" without
+          knowing where would be approving a number, not a movement. */}
+      {folderName && (
+        <div className="mb-3 rounded-lg border border-line p-3 text-sm">
+          <span className="text-xs text-muted-foreground">Qovluq: </span>
+          <span className="font-semibold">{folderName}</span>
+        </div>
+      )}
       <div className="grid grid-cols-3 gap-3 rounded-lg border border-line p-3 text-center">
         <div>
           <div className="text-xs text-muted-foreground">Hazırkı qalıq</div>
@@ -200,8 +258,8 @@ function StockDiff({ request }: { request: ApprovalRequest }) {
       {result < 0 && (
         <div className="mt-3">
           <Alert variant="danger" title="Qalıq çatmır">
-            Anbarda yalnız {formatQuantity(currentQuantity)} {unit} var — bu sorğu təsdiqlənə
-            bilməz.
+            {folderName ? `«${folderName}» qovluğunda` : 'Anbarda'} yalnız{' '}
+            {formatQuantity(currentQuantity)} {unit} var — bu sorğu təsdiqlənə bilməz.
           </Alert>
         </div>
       )}
@@ -232,7 +290,7 @@ function ApprovalDiff({ request }: { request: ApprovalRequest }) {
   // the reviewer something rather than nothing.
   if (
     STOCK_OPERATIONS.has(request.operation) &&
-    toNumber(before.quantity) !== null &&
+    balanceAtTargetNode(before, payload) !== null &&
     toNumber(payload.quantity) !== null
   ) {
     return <StockDiff request={request} />;

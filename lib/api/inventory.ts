@@ -156,8 +156,13 @@ export async function deleteInventoryItem(id: string): Promise<ApprovalRequest> 
   return apiDelete<ApprovalRequest>(`/inventory/items/${id}`);
 }
 
-export async function moveInventoryItem(id: string, nodeId: string): Promise<ApprovalRequest> {
-  return apiPost<ApprovalRequest>(`/inventory/items/${id}/move`, { nodeId });
+/** Relocates everything held at one folder to another; the source must be named. */
+export async function moveInventoryItem(
+  id: string,
+  fromNodeId: string,
+  toNodeId: string,
+): Promise<ApprovalRequest> {
+  return apiPost<ApprovalRequest>(`/inventory/items/${id}/move`, { fromNodeId, toNodeId });
 }
 
 export async function stockInInventoryItem(id: string, body: StockQuantityRequest): Promise<ApprovalRequest> {

@@ -88,18 +88,30 @@ export interface InventoryCategoryRequest {
   fields?: InventoryCategoryFieldRequest[];
 }
 
-/** A product. */
+/** One folder holding a product, and how much of it sits there. */
+export interface StockLocation {
+  nodeId: string;
+  nodeName: string | null;
+  quantity: number;
+}
+
+/**
+ * A product — the catalogue entry. Where it is and how much there is live in `locations`, because
+ * the same product is routinely kept in more than one folder.
+ */
 export interface InventoryItem {
   id: string;
   branchId: string;
-  nodeId: string;
   categoryId: string;
   name: string;
   sku: string;
   barcode: string | null;
   qrCode: string | null;
   unit: string;
-  quantity: number;
+  /** Sum across every location. */
+  totalQuantity: number;
+  /** Every folder holding this product; empty once the last one is emptied. */
+  locations: StockLocation[];
   purchasePrice: number;
   isSerialized: boolean;
   attributes: Record<string, unknown>;
@@ -119,6 +131,7 @@ export interface InventoryItem {
 }
 
 export interface InventoryItemRequest {
+  /** Opening location — read on create only. */
   nodeId: string;
   categoryId: string;
   name: string;
@@ -138,6 +151,8 @@ export interface InventoryItemRequest {
 }
 
 export interface StockQuantityRequest {
+  /** Which folder the stock moves in or out of. */
+  nodeId: string;
   quantity: number;
   reason?: string;
 }

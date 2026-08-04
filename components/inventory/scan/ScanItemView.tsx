@@ -22,7 +22,8 @@ export function ScanItemView({ itemId }: { itemId: string }) {
   const router = useRouter();
   const { data: item, isLoading } = useInventoryItem(itemId);
   const { data: categories } = useInventoryCategories();
-  const { data: path } = useInventoryNodePath(item?.nodeId ?? null, Boolean(item));
+  const primaryNodeId = item?.locations[0]?.nodeId ?? null;
+  const { data: path } = useInventoryNodePath(primaryNodeId, Boolean(item));
   const [detailOpen, setDetailOpen] = useState(false);
 
   if (isLoading || !item) {
@@ -64,7 +65,8 @@ export function ScanItemView({ itemId }: { itemId: string }) {
             <Button
               variant="primary"
               size="sm"
-              onClick={() => router.push(`/warehouse?nodeId=${item.nodeId}`)}
+              disabled={!primaryNodeId}
+              onClick={() => router.push(`/warehouse?nodeId=${primaryNodeId}`)}
             >
               Anbarda aç
               <ArrowRight className="h-4 w-4" />
@@ -76,12 +78,11 @@ export function ScanItemView({ itemId }: { itemId: string }) {
           <div>
             <div className="text-xs text-muted-foreground">Miqdar</div>
             <div className="mt-0.5 text-sm font-semibold">
-              {item.isSerialized ? (
-                <Badge variant="info" size="sm">
+              {`${item.totalQuantity} ${item.unit}`}
+              {item.isSerialized && (
+                <Badge variant="info" size="sm" className="ml-1.5">
                   Seriyalı
                 </Badge>
-              ) : (
-                `${item.quantity} ${item.unit}`
               )}
             </div>
           </div>
