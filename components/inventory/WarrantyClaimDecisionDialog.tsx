@@ -59,11 +59,17 @@ export function WarrantyClaimDecisionDialog({
   open,
   onOpenChange,
   claim,
+  initialStatus,
   onDecided,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   claim: WarrantyClaim | null;
+  /**
+   * Preselects an outcome — set when the dialog was opened by dropping a card on a column, so the
+   * board's gesture is already half the answer and only the details are left to fill in.
+   */
+  initialStatus?: WarrantyClaimStatus;
   /** Receives the saved claim — the caller may need to react to it leaving the current filter. */
   onDecided?: (claim: WarrantyClaim) => void;
 }) {
@@ -76,12 +82,12 @@ export function WarrantyClaimDecisionDialog({
 
   useEffect(() => {
     if (!open || !claim) return;
-    setStatus(claim.status === 'SUBMITTED' ? 'ACCEPTED' : claim.status);
+    setStatus(initialStatus ?? (claim.status === 'SUBMITTED' ? 'ACCEPTED' : claim.status));
     setResolution(claim.resolution ?? '');
     setDecisionNotes(claim.decisionNotes ?? '');
     setDecidedAt(claim.decidedAt ?? todayValue());
     setError(null);
-  }, [open, claim]);
+  }, [open, claim, initialStatus]);
 
   async function handleSubmit() {
     if (!claim) return;

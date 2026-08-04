@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { FileWarning, Gavel, Search, Trash2 } from 'lucide-react';
+import { Columns3, FileWarning, Gavel, List, Search, Trash2 } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -24,9 +24,11 @@ import {
   CLAIM_STATUS_LABEL,
 } from '@/components/inventory/badges';
 import { WarrantyClaimDecisionDialog } from '@/components/inventory/WarrantyClaimDecisionDialog';
+import { WarrantyClaimBoard } from '@/components/inventory/WarrantyClaimBoard';
 import { ItemDetailDialog } from '@/components/inventory/ItemDetailDialog';
 import { useDeleteWarrantyClaim, useWarrantyClaims } from '@/hooks/use-inventory';
 import { formatDate } from '@/lib/utils/format';
+import { cn } from '@/lib/utils';
 import type { WarrantyClaim, WarrantyClaimStatus } from '@/types/inventory';
 
 const PAGE_SIZE = 20;
@@ -61,6 +63,10 @@ export function WarrantyClaimsPanel({
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [movedOut, setMovedOut] = useState<WarrantyClaim | null>(null);
+  // The board is for working a queue, the table for finding one row among many — neither
+  // replaces the other, so the view is a choice rather than a redesign.
+  const [view, setView] = useState<'board' | 'table'>('board');
+  const [droppedStatus, setDroppedStatus] = useState<WarrantyClaimStatus | undefined>(undefined);
 
   const deleteClaim = useDeleteWarrantyClaim();
   const { data, isLoading, isError } = useWarrantyClaims({
@@ -103,20 +109,43 @@ export function WarrantyClaimsPanel({
               setPage(1);
             }}
           />
-          <select
-            className="h-9 rounded-lg border border-line bg-white px-2 text-sm"
-            value={status}
-            onChange={(e) => {
-              onStatusChange(e.target.value as WarrantyClaimStatus | '');
-              setPage(1);
-            }}
-          >
-            {STATUS_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+          {/* The status select is redundant on the board — the columns are the filter. */}
+          {view === 'table' && (
+            <select
+              className="h-9 rounded-lg border border-line bg-white px-2 text-sm"
+              value={status}
+              onChange={(e) => {
+                onStatusChange(e.target.value as WarrantyClaimStatus | '');
+                setPage(1);
+              }}
+            >
+              {STATUS_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          )}
+          <div className="flex items-center gap-0.5 rounded-lg border border-line p-0.5">
+            <button
+              type="button"
+              onClick={() => setView('board')}
+              className={cn('btn btn-ghost btn-xs', view === 'board' && 'bg-graphite-50 font-semibold')}
+              aria-pressed={view === 'board'}
+            >
+              <Columns3 className="h-3.5 w-3.5" />
+              Lövhə
+            </button>
+            <button
+              type="button"
+              onClick={() => setView('table')}
+              className={cn('btn btn-ghost btn-xs', view === 'table' && 'bg-graphite-50 font-semibold')}
+              aria-pressed={view === 'table'}
+            >
+              <List className="h-3.5 w-3.5" />
+              Cədvəl
+            </button>
+          </div>
         </div>
       </TableTools>
 
@@ -155,6 +184,25 @@ export function WarrantyClaimsPanel({
         </div>
       )}
 
+      {view === 'board' ? (
+        <WarrantyClaimBoard
+          search={search}
+          onDecide={(claim) => {
+            setDroppedStatus(undefined);
+            setDecisionClaim(claim);
+          }}
+          onDelete={(claim) => {
+            setActionError(null);
+            setDeletingClaim(claim);
+          }}
+          onDrop={(claim, target) => {
+            // The gesture picks the outcome; the dialog collects what the gesture cannot say.
+            setDroppedStatus(target);
+            setDecisionClaim(claim);
+          }}
+        />
+      ) : (
+      <>
       <Table>
         <TableHeader>
           <TableRow>
@@ -271,12 +319,19 @@ export function WarrantyClaimsPanel({
           onPageChange={setPage}
         />
       )}
+      </>
+      )}
 
       <WarrantyClaimDecisionDialog
         open={Boolean(decisionClaim)}
         onOpenChange={(open) => !open && setDecisionClaim(null)}
         claim={decisionClaim}
-        onDecided={(saved) => setMovedOut(status && saved.status !== status ? saved : null)}
+        initialStatus={droppedStatus}
+        onDecided={(saved) => {
+          setDroppedStatus(undefined);
+          // Only the table can hide a row behind a filter; the board always has a column for it.
+          setMovedOut(view === 'table' && status && saved.status !== status ? saved : null);
+        }}
       />
 
       <ItemDetailDialog
