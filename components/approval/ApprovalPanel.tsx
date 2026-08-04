@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckCircle2, ShieldCheck, XCircle } from 'lucide-react';
+import { ArrowRight, CheckCircle2, ShieldCheck, XCircle } from 'lucide-react';
 import {
   useApprovals,
   useApproveRequest,
@@ -278,6 +278,83 @@ function StockDiff({ request }: { request: ApprovalRequest }) {
 }
 
 /**
+ * Relocations get their own block too.
+ *
+ * The generic diff can only print two folder ids, and an omitted amount — which means "all of it" —
+ * renders there as "—", reading like nothing is being moved at all. The reviewer is approving stock
+ * leaving a specific shelf, so the shelf, the amount and what stays behind are what has to be on
+ * screen.
+ */
+function MoveDiff({ request }: { request: ApprovalRequest }) {
+  const before = (request.beforeSnapshot ?? {}) as Record<string, unknown>;
+  const payload = (request.payload ?? {}) as Record<string, unknown>;
+  const fromId = typeof payload.fromNodeId === 'string' ? payload.fromNodeId : null;
+  const toId = typeof payload.toNodeId === 'string' ? payload.toNodeId : null;
+
+  const rows = locationsOf(before);
+  const sourceRow = rows.find((location) => location.nodeId === fromId);
+  const targetRow = rows.find((location) => location.nodeId === toId);
+
+  // The destination is usually a folder the product has never been kept in, so it has no stock row
+  // to carry a name — that is the one worth fetching by id.
+  const { data: sourceNode } = useInventoryNode(!sourceRow && fromId ? fromId : null);
+  const { data: targetNode } = useInventoryNode(!targetRow && toId ? toId : null);
+
+  const available = (sourceRow ? toNumber(sourceRow.quantity) : null) ?? 0;
+  // An absent amount is the whole balance, not zero.
+  const requested = toNumber(payload.quantity);
+  const moving = requested ?? available;
+  const remaining = available - moving;
+
+  const unit = typeof before.unit === 'string' ? before.unit : '';
+  const sourceName =
+    (typeof sourceRow?.nodeName === 'string' ? sourceRow.nodeName : null) ?? sourceNode?.name ?? '—';
+  const targetName =
+    (typeof targetRow?.nodeName === 'string' ? targetRow.nodeName : null) ?? targetNode?.name ?? '—';
+
+  return (
+    <div>
+      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-line p-3 text-sm">
+        <span className="font-semibold">{sourceName}</span>
+        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+        <span className="font-semibold">{targetName}</span>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3 rounded-lg border border-line p-3 text-center">
+        <div>
+          <div className="text-xs text-muted-foreground">Mənbədə indi</div>
+          <div className="mt-0.5 text-lg font-bold">
+            {formatQuantity(available)} <span className="text-sm font-normal">{unit}</span>
+          </div>
+        </div>
+        <div>
+          <div className="text-xs text-muted-foreground">Köçürülür</div>
+          <div className="mt-0.5 text-lg font-bold text-gold">
+            {formatQuantity(moving)} <span className="text-sm font-normal">{unit}</span>
+          </div>
+          {requested === null && <div className="text-xs text-muted-foreground">hamısı</div>}
+        </div>
+        <div>
+          <div className="text-xs text-muted-foreground">Mənbədə qalacaq</div>
+          <div className={cn('mt-0.5 text-lg font-extrabold', remaining < 0 && 'text-danger')}>
+            {formatQuantity(remaining)} <span className="text-sm font-normal">{unit}</span>
+          </div>
+        </div>
+      </div>
+
+      {remaining < 0 && (
+        <div className="mt-3">
+          <Alert variant="danger" title="Qalıq çatmır">
+            «{sourceName}» qovluğunda yalnız {formatQuantity(available)} {unit} var — bu sorğu
+            təsdiqlənə bilməz.
+          </Alert>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
  * Field-by-field comparison of the stored "before" snapshot against the parked payload.
  *
  * Only keys present in the payload are compared: the payload is the change being requested, so a
@@ -297,6 +374,10 @@ function ApprovalDiff({ request }: { request: ApprovalRequest }) {
     toNumber(payload.quantity) !== null
   ) {
     return <StockDiff request={request} />;
+  }
+
+  if (request.operation === 'MOVE' && typeof payload.fromNodeId === 'string') {
+    return <MoveDiff request={request} />;
   }
 
   if (isDelete) {
