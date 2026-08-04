@@ -23,10 +23,13 @@ export async function login(payload: LoginRequest): Promise<LoginResponse> {
 }
 
 /** POST /api/v1/auth/refresh */
-export async function refresh(refreshToken: string): Promise<TokenResponse> {
+export async function refresh(
+  refreshToken: string,
+  branchId?: string,
+): Promise<TokenResponse> {
   const res = await axios.post<ApiResponse<TokenResponse>>(
     `${API_URL}/auth/refresh`,
-    { refresh_token: refreshToken },
+    { refresh_token: refreshToken, branch_id: branchId },
     { headers: { 'Content-Type': 'application/json' } },
   );
   return res.data.data;

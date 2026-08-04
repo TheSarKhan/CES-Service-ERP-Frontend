@@ -5,11 +5,13 @@ import {
   QueryClient,
   QueryClientProvider,
 } from '@tanstack/react-query';
+import { AuthSessionKeeper } from '@/lib/auth/session-keeper';
 
 /**
- * Client-side providers: a per-app TanStack Query client. The Zustand auth
- * store hydrates itself from localStorage via its `persist` middleware, so no
- * explicit hydration wrapper is required here.
+ * Client-side providers: a per-app TanStack Query client plus the silent
+ * JWT session keeper. The Zustand auth store hydrates itself from
+ * localStorage via its `persist` middleware, so no explicit hydration
+ * wrapper is required here.
  */
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -26,6 +28,9 @@ export function Providers({ children }: { children: ReactNode }) {
   );
 
   return (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthSessionKeeper />
+      {children}
+    </QueryClientProvider>
   );
 }

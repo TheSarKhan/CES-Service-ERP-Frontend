@@ -6,6 +6,7 @@ import axios, {
   type InternalAxiosRequestConfig,
 } from 'axios';
 import type { ApiErrorResponse, ApiResponse } from '@/types/api';
+import type { LoginResponse } from '@/types/auth';
 import { useAuthStore } from '@/store/auth-store';
 
 const API_BASE =
@@ -44,30 +45,76 @@ interface RetriableConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
 }
 
-// A single in-flight refresh promise shared across concurrent 401s.
+// A single in-flight refresh promise shared across concurrent callers
+// (401-triggered retries and the proactive session keeper alike).
 let refreshPromise: Promise<string | null> | null = null;
 
+/**
+ * Refresh the token pair, deduplicating concurrent calls into one request.
+ *
+ * Resolves with the new access token; resolves `null` when the server
+ * definitively rejected the session (invalid/revoked refresh token) — the
+ * caller should treat that as "session dead". Rejects on transient failures
+ * (network, 5xx) so callers can retry instead of logging the user out.
+ */
+export function refreshSession(): Promise<string | null> {
+  if (!refreshPromise) {
+    refreshPromise = performRefresh().finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
+}
+
 async function performRefresh(): Promise<string | null> {
-  const { refreshToken } = useAuthStore.getState();
+  const { refreshToken, activeBranchId } = useAuthStore.getState();
   if (!refreshToken) return null;
 
   try {
     // Use a bare axios call to avoid recursive interceptors.
-    const res = await axios.post<ApiResponse<{
-      access_token: string;
-      refresh_token: string;
-    }>>(`${API_URL}/auth/refresh`, { refresh_token: refreshToken });
+    const res = await axios.post<ApiResponse<LoginResponse>>(
+      `${API_URL}/auth/refresh`,
+      {
+        refresh_token: refreshToken,
+        // Keep the session bound to the branch the user is working in.
+        branch_id: activeBranchId ?? undefined,
+      },
+    );
 
     const data = res.data?.data;
     if (!data?.access_token) return null;
 
-    useAuthStore
-      .getState()
-      .setTokens(data.access_token, data.refresh_token ?? refreshToken);
+    const store = useAuthStore.getState();
+    if (data.user) {
+      // Full payload -> also picks up role/permission changes made server-side.
+      store.setAuth(data);
+    } else {
+      store.setTokens(data.access_token, data.refresh_token ?? refreshToken);
+    }
     return data.access_token;
-  } catch {
-    return null;
+  } catch (error) {
+    const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+    // 4xx = the refresh token itself was rejected -> session is dead.
+    if (status !== undefined && status >= 400 && status < 500) {
+      return null;
+    }
+    // Network error / 5xx: keep the session, let the caller decide to retry.
+    throw error;
   }
+}
+
+/**
+ * Wipe the session and send the user to /login, preserving the current path in
+ * `?from=` so they land back where they were after re-authenticating.
+ */
+export function forceLogout(): void {
+  useAuthStore.getState().logout();
+  if (typeof window === 'undefined') return;
+  const { pathname } = window.location;
+  if (pathname.startsWith('/login')) return;
+  const from =
+    pathname && pathname !== '/' ? `?from=${encodeURIComponent(pathname)}` : '';
+  window.location.replace(`/login${from}`);
 }
 
 // --- Response interceptor: unwrap envelope + one-shot refresh on 401.
@@ -79,9 +126,14 @@ httpClient.interceptors.response.use(
     if (error.response?.status === 401 && original && !original._retry) {
       original._retry = true;
 
-      refreshPromise = refreshPromise ?? performRefresh();
-      const newToken = await refreshPromise;
-      refreshPromise = null;
+      let newToken: string | null = null;
+      try {
+        newToken = await refreshSession();
+      } catch {
+        // Transient refresh failure — surface the original 401 without
+        // destroying the session; a later request will retry the refresh.
+        return Promise.reject(error);
+      }
 
       if (newToken) {
         const headers = AxiosHeaders.from(original.headers);
@@ -90,8 +142,8 @@ httpClient.interceptors.response.use(
         return httpClient(original);
       }
 
-      // Refresh failed -> hard logout.
-      useAuthStore.getState().logout();
+      // Refresh token rejected -> hard logout + redirect to /login.
+      forceLogout();
     }
 
     return Promise.reject(error);

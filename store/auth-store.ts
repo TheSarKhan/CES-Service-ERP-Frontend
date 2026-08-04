@@ -7,7 +7,14 @@ const ACCESS_TOKEN_COOKIE = 'ces_access_token';
 /** Cookie mirroring the active branch id (available to SSR / middleware). */
 const BRANCH_COOKIE = 'ces_branch_id';
 
-const ACCESS_TOKEN_MAX_AGE = 60 * 60; // 1h (SRS §4.1)
+/**
+ * The auth cookie only gates routing in the edge middleware (presence check);
+ * the API is authenticated by the Authorization header, which the client
+ * refreshes silently. So the cookie must live as long as the *refresh* window
+ * (7d) — with the old 1h max-age, an idle-but-refreshable user was bounced to
+ * /login by the middleware even though their session was still valid.
+ */
+const ACCESS_TOKEN_MAX_AGE = 60 * 60 * 24 * 7; // = refresh token TTL (SRS §4.1)
 const BRANCH_MAX_AGE = 60 * 60 * 24 * 7; // 7d
 
 function setCookie(name: string, value: string, maxAgeSeconds: number): void {

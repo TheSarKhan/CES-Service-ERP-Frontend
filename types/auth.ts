@@ -49,17 +49,23 @@ export interface LoginResponse {
   user: User;
 }
 
-/** Token-only response from /auth/refresh. */
+/**
+ * Response from /auth/refresh. The backend includes the (re-resolved) user so
+ * a silent refresh also picks up role/permission changes.
+ */
 export interface TokenResponse {
   access_token: string;
   refresh_token: string;
   token_type: 'Bearer';
   expires_in: number;
+  user?: User;
 }
 
 /** POST /api/v1/auth/refresh request body. */
 export interface RefreshRequest {
   refresh_token: string;
+  /** Current branch, so the refreshed token stays bound to it. */
+  branch_id?: string;
 }
 
 /** POST /api/v1/auth/switch-branch request body. */
