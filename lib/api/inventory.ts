@@ -18,7 +18,10 @@ import type {
   InventorySettings,
   InventorySettingsRequest,
   InventoryUnitSearchParams,
+  InventoryTransfer,
   StockAlertSummary,
+  TransferRequest,
+  TransferStatus,
   StockMovement,
   StockMovementParams,
   StockQuantityRequest,
@@ -204,6 +207,28 @@ export async function updateInventorySettings(
   body: InventorySettingsRequest,
 ): Promise<InventorySettings> {
   return apiPut<InventorySettings>('/inventory/settings', body);
+}
+
+// ── Transfers ────────────────────────────────────────────────────────────
+
+export async function getTransfers(
+  params: { status?: TransferStatus; page?: number; size?: number } = {},
+): Promise<PageResponse<InventoryTransfer>> {
+  const page = await apiGet<RawPage<InventoryTransfer>>('/inventory/transfers', params);
+  return { items: page.content, meta: page.meta };
+}
+
+/** Applies immediately — receiving is itself the second pair of eyes, so there is no queue. */
+export async function sendTransfer(body: TransferRequest): Promise<InventoryTransfer> {
+  return apiPost<InventoryTransfer>('/inventory/transfers', body);
+}
+
+export async function receiveTransfer(id: string): Promise<InventoryTransfer> {
+  return apiPost<InventoryTransfer>(`/inventory/transfers/${id}/receive`, {});
+}
+
+export async function cancelTransfer(id: string): Promise<InventoryTransfer> {
+  return apiPost<InventoryTransfer>(`/inventory/transfers/${id}/cancel`, {});
 }
 
 // ── Stock movements ──────────────────────────────────────────────────────

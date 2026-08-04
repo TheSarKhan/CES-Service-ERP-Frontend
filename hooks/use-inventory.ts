@@ -12,6 +12,8 @@ import type {
   InventoryItemUnitUpdateRequest,
   InventoryNodeRequest,
   InventorySettingsRequest,
+  TransferRequest,
+  TransferStatus,
   InventoryUnitSearchParams,
   StockMovementParams,
   StockQuantityRequest,
@@ -43,6 +45,8 @@ export const inventoryKeys = {
   lowStock: (branchId: string | null, criticalOnly: boolean, page: number) =>
     ['inventory', 'stock-alerts', branchId, criticalOnly, page] as const,
   settings: (branchId: string | null) => ['inventory', 'settings', branchId] as const,
+  transfers: (branchId: string | null, status: TransferStatus | undefined, page: number) =>
+    ['inventory', 'transfers', branchId, status ?? 'all', page] as const,
   stockMovements: (branchId: string | null, params: StockMovementParams) =>
     ['inventory', 'stock-movements', branchId, params] as const,
   warrantySummary: (branchId: string | null) => ['inventory', 'warranty', 'summary', branchId] as const,
@@ -396,6 +400,41 @@ export function useUpdateInventorySettings() {
     mutationFn: (body: InventorySettingsRequest) => api.updateInventorySettings(body),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['inventory', 'settings'] }),
   });
+}
+
+// ── Transfers ────────────────────────────────────────────────────────────
+
+export function useTransfers(status?: TransferStatus, page = 1, size = 20) {
+  const activeBranchId = useAuthStore((s) => s.activeBranchId);
+  return useQuery({
+    queryKey: inventoryKeys.transfers(activeBranchId, status, page),
+    queryFn: () => api.getTransfers({ status, page, size }),
+    enabled: Boolean(activeBranchId),
+  });
+}
+
+/** Transfers move stock, so the whole inventory tree is refreshed rather than one key. */
+function useInvalidateTransfers() {
+  const queryClient = useQueryClient();
+  return () => queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+}
+
+export function useSendTransfer() {
+  const invalidate = useInvalidateTransfers();
+  return useMutation({
+    mutationFn: (body: TransferRequest) => api.sendTransfer(body),
+    onSuccess: invalidate,
+  });
+}
+
+export function useReceiveTransfer() {
+  const invalidate = useInvalidateTransfers();
+  return useMutation({ mutationFn: (id: string) => api.receiveTransfer(id), onSuccess: invalidate });
+}
+
+export function useCancelTransfer() {
+  const invalidate = useInvalidateTransfers();
+  return useMutation({ mutationFn: (id: string) => api.cancelTransfer(id), onSuccess: invalidate });
 }
 
 // ── Stock movements ──────────────────────────────────────────────────────

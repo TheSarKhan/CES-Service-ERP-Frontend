@@ -255,6 +255,46 @@ export interface InventoryUnitSearchParams {
   dir?: 'asc' | 'desc';
 }
 
+// ── Transfers ────────────────────────────────────────────────────────────
+
+/** IN_TRANSIT means it has left the source shelf but not yet reached the destination. */
+export type TransferStatus = 'IN_TRANSIT' | 'RECEIVED' | 'CANCELLED';
+
+export interface TransferLine {
+  itemId: string;
+  itemName: string | null;
+  itemSku: string | null;
+  unit: string | null;
+  quantity: number;
+}
+
+export interface InventoryTransfer {
+  id: string;
+  fromNodeId: string;
+  fromNodeName: string | null;
+  toNodeId: string;
+  toNodeName: string | null;
+  status: TransferStatus;
+  notes: string | null;
+  sentBy: string | null;
+  sentByName: string | null;
+  sentAt: string;
+  receivedBy: string | null;
+  receivedByName: string | null;
+  receivedAt: string | null;
+  cancelledAt: string | null;
+  lines: TransferLine[];
+  /** False for the sender when the branch requires a different person to receive. */
+  canReceive: boolean;
+}
+
+export interface TransferRequest {
+  fromNodeId: string;
+  toNodeId: string;
+  lines: { itemId: string; quantity: number }[];
+  notes?: string | null;
+}
+
 // ── Stock movements (ledger) ─────────────────────────────────────────────
 
 export type StockMovementType =
