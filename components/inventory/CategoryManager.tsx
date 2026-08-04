@@ -293,13 +293,10 @@ export function CategoryManager() {
     reorderFields.mutate({ categoryId: selectedCategory.id, fieldIds: reordered });
   }
 
+  // No heading here: the tab above already says "Kateqoriyalar", and repeating it pushed the
+  // content down for nothing.
   return (
     <div>
-      <div className="mb-4">
-        <h3 className="text-base font-bold">Kateqoriyalar</h3>
-        <p className="text-sm text-muted-foreground">Hər kateqoriya öz dinamik sahə sxemini daşıyır</p>
-      </div>
-
       {isError && (
         <Alert variant="danger" title="Yüklənmədi">
           Kateqoriya siyahısı yüklənə bilmədi.
