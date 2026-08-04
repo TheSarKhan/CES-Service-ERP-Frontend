@@ -56,6 +56,8 @@ const OPERATION_LABELS: Record<ApprovalOperation, string> = {
   FIELD_UPDATE: 'Sahə redaktəsi',
   FIELD_DELETE: 'Sahə silinməsi',
   WARRANTY_EXTEND: 'Zəmanət uzadılması',
+  // Historical: the stocktake sheet is gone, but its decided requests are still in the list and
+  // would render with a raw enum name if the label went with it.
   STOCKTAKE_APPLY: 'İnventarizasiya fərqləri',
 };
 
@@ -64,6 +66,7 @@ const ENTITY_LABELS: Record<ApprovalEntityType, string> = {
   INVENTORY_ITEM_UNIT: 'Seriyalı vahid',
   INVENTORY_NODE: 'Qovluq',
   INVENTORY_CATEGORY: 'Kateqoriya',
+  /** Historical — see STOCKTAKE_APPLY above. */
   INVENTORY_STOCKTAKE: 'İnventarizasiya',
 };
 

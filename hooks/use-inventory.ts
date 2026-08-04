@@ -13,7 +13,6 @@ import type {
   InventoryNodeRequest,
   InventorySettingsRequest,
   InventoryLotRequest,
-  StocktakeStatus,
   InventoryUnitSearchParams,
   StockMovementParams,
   StockQuantityRequest,
@@ -48,9 +47,6 @@ export const inventoryKeys = {
   itemLots: (itemId: string) => ['inventory', 'lots', 'item', itemId] as const,
   expiringLots: (branchId: string | null, withinDays: number) =>
     ['inventory', 'lots', 'expiring', branchId, withinDays] as const,
-  stocktakes: (branchId: string | null, status: StocktakeStatus | undefined, page: number) =>
-    ['inventory', 'stocktakes', branchId, status ?? 'all', page] as const,
-  stocktake: (id: string) => ['inventory', 'stocktakes', 'detail', id] as const,
   stockMovements: (branchId: string | null, params: StockMovementParams) =>
     ['inventory', 'stock-movements', branchId, params] as const,
   warrantySummary: (branchId: string | null) => ['inventory', 'warranty', 'summary', branchId] as const,
@@ -466,62 +462,6 @@ export function useWriteOffLot() {
       api.writeOffLot(lotId, reason),
     onSuccess: invalidate,
   });
-}
-
-// ── Stocktakes ───────────────────────────────────────────────────────────
-
-export function useStocktakes(status?: StocktakeStatus, page = 1, size = 20) {
-  const activeBranchId = useAuthStore((s) => s.activeBranchId);
-  return useQuery({
-    queryKey: inventoryKeys.stocktakes(activeBranchId, status, page),
-    queryFn: () => api.getStocktakes({ status, page, size }),
-    enabled: Boolean(activeBranchId),
-  });
-}
-
-export function useStocktake(id: string | null) {
-  return useQuery({
-    queryKey: inventoryKeys.stocktake(id ?? ''),
-    queryFn: () => api.getStocktake(id as string),
-    enabled: Boolean(id),
-  });
-}
-
-function useInvalidateStocktakes() {
-  const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
-}
-
-export function useOpenStocktake() {
-  const invalidate = useInvalidateStocktakes();
-  return useMutation({
-    mutationFn: (body: { nodeId: string; notes?: string | null }) => api.openStocktake(body),
-    onSuccess: invalidate,
-  });
-}
-
-export function useCountStocktakeLine() {
-  const invalidate = useInvalidateStocktakes();
-  return useMutation({
-    mutationFn: ({
-      id,
-      body,
-    }: {
-      id: string;
-      body: { itemId: string; countedQuantity: number; notes?: string | null };
-    }) => api.countStocktakeLine(id, body),
-    onSuccess: invalidate,
-  });
-}
-
-export function useCloseStocktake() {
-  const invalidate = useInvalidateStocktakes();
-  return useMutation({ mutationFn: (id: string) => api.closeStocktake(id), onSuccess: invalidate });
-}
-
-export function useCancelStocktake() {
-  const invalidate = useInvalidateStocktakes();
-  return useMutation({ mutationFn: (id: string) => api.cancelStocktake(id), onSuccess: invalidate });
 }
 
 // ── Stock movements ──────────────────────────────────────────────────────

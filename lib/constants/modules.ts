@@ -128,14 +128,6 @@ export const NAV_GROUPS: NavGroup[] = [
             built: true,
           },
           {
-            key: 'M19_WAREHOUSE_STOCKTAKES',
-            label: 'İnventarizasiya',
-            href: '/warehouse/stocktakes',
-            icon: ClipboardList,
-            permission: 'WH_READ',
-            built: true,
-          },
-          {
             key: 'M19_WAREHOUSE_SEARCH',
             label: 'Məhsul axtarışı',
             href: '/warehouse/search',

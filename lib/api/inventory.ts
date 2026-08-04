@@ -21,8 +21,6 @@ import type {
   InventoryLot,
   InventoryLotRequest,
   StockAlertSummary,
-  Stocktake,
-  StocktakeStatus,
   StockMovement,
   StockMovementParams,
   StockQuantityRequest,
@@ -255,39 +253,6 @@ export async function getExpiringLots(
 ): Promise<PageResponse<InventoryLot>> {
   const page = await apiGet<RawPage<InventoryLot>>('/inventory/lots/expiring', params);
   return { items: page.content, meta: page.meta };
-}
-
-// ── Stocktakes ───────────────────────────────────────────────────────────
-
-export async function getStocktakes(
-  params: { status?: StocktakeStatus; page?: number; size?: number } = {},
-): Promise<PageResponse<Stocktake>> {
-  const page = await apiGet<RawPage<Stocktake>>('/inventory/stocktakes', params);
-  return { items: page.content, meta: page.meta };
-}
-
-export async function getStocktake(id: string): Promise<Stocktake> {
-  return apiGet<Stocktake>(`/inventory/stocktakes/${id}`);
-}
-
-export async function openStocktake(body: { nodeId: string; notes?: string | null }): Promise<Stocktake> {
-  return apiPost<Stocktake>('/inventory/stocktakes', body);
-}
-
-export async function countStocktakeLine(
-  id: string,
-  body: { itemId: string; countedQuantity: number; notes?: string | null },
-): Promise<Stocktake> {
-  return apiPost<Stocktake>(`/inventory/stocktakes/${id}/count`, body);
-}
-
-/** Closing parks one approval covering every variance at once. */
-export async function closeStocktake(id: string): Promise<Stocktake> {
-  return apiPost<Stocktake>(`/inventory/stocktakes/${id}/close`, {});
-}
-
-export async function cancelStocktake(id: string): Promise<Stocktake> {
-  return apiPost<Stocktake>(`/inventory/stocktakes/${id}/cancel`, {});
 }
 
 // ── Stock movements ──────────────────────────────────────────────────────
