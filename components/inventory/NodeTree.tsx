@@ -60,17 +60,11 @@ export function NodeTree({ mode, onRowClick, selectedId }: NodeTreeProps) {
     }
   }
 
+  // "Kök qovluq" is not here: a lone right-aligned button above the tree left a white band
+  // between the tabs and the content. It lives in the page header now, where every other module
+  // puts its create action.
   return (
     <div>
-      {mode === 'manage' && (
-        <div className="mb-3 flex justify-end">
-          <Button variant="outline" size="sm" onClick={() => setCreateParentId(null)}>
-            <Plus className="h-4 w-4" />
-            Kök qovluq
-          </Button>
-        </div>
-      )}
-
       {error && (
         <div className="mb-3">
           <Alert variant="danger" title="Xəta">

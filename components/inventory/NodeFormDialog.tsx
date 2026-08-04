@@ -14,12 +14,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label, Field, FieldError, FieldHint } from '@/components/ui/label';
+import { Label, Field, FieldError } from '@/components/ui/label';
 import { Alert } from '@/components/ui/alert';
 import {
   useCreateInventoryNode,
-  useInventoryCategories,
   useUpdateInventoryNode,
 } from '@/hooks/use-inventory';
 import { ApiRequestError } from '@/lib/api/client';
@@ -48,10 +46,8 @@ export interface NodeFormDialogProps {
 export function NodeFormDialog({ open, onOpenChange, parentId, editingNode, onSaved }: NodeFormDialogProps) {
   const [serverError, setServerError] = useState<string | null>(null);
   const [approvalSent, setApprovalSent] = useState(false);
-  const [categoryIds, setCategoryIds] = useState<string[]>([]);
   const createNode = useCreateInventoryNode();
   const updateNode = useUpdateInventoryNode();
-  const { data: categories } = useInventoryCategories();
   const isEditing = Boolean(editingNode);
 
   const {
@@ -71,7 +67,6 @@ export function NodeFormDialog({ open, onOpenChange, parentId, editingNode, onSa
         code: editingNode?.code ?? '',
         notes: editingNode?.notes ?? '',
       });
-      setCategoryIds(editingNode?.categoryIds ?? []);
       setServerError(null);
     }
   }, [open, editingNode, reset]);
@@ -89,7 +84,6 @@ export function NodeFormDialog({ open, onOpenChange, parentId, editingNode, onSa
             parentId: editingNode!.parentId,
             notes: values.notes || null,
             isActive: editingNode!.isActive,
-            categoryIds,
           },
         });
         onOpenChange(false);
@@ -102,7 +96,6 @@ export function NodeFormDialog({ open, onOpenChange, parentId, editingNode, onSa
         code: values.code || null,
         parentId,
         notes: values.notes || null,
-        categoryIds,
       });
       onSaved?.(node);
       onOpenChange(false);
@@ -159,34 +152,6 @@ export function NodeFormDialog({ open, onOpenChange, parentId, editingNode, onSa
             {errors.notes && <FieldError>{errors.notes.message}</FieldError>}
           </Field>
 
-          <Field>
-            <Label>İcazəli kateqoriyalar (opsional)</Label>
-            {categories && categories.length > 0 ? (
-              <div className="flex flex-wrap gap-3">
-                {categories.map((category) => (
-                  <Checkbox
-                    key={category.id}
-                    size="sm"
-                    checked={categoryIds.includes(category.id)}
-                    onChange={(e) => {
-                      setCategoryIds((prev) =>
-                        e.target.checked
-                          ? [...prev, category.id]
-                          : prev.filter((id) => id !== category.id),
-                      );
-                    }}
-                  >
-                    {category.name}
-                  </Checkbox>
-                ))}
-              </div>
-            ) : (
-              <FieldHint>Hələ kateqoriya yaradılmayıb.</FieldHint>
-            )}
-            <FieldHint>
-              Heç biri seçilməyibsə, bu qovluqda istənilən kateqoriyadan məhsul əlavə edilə bilər.
-            </FieldHint>
-          </Field>
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
