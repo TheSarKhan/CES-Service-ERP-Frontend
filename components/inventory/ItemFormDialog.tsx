@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ShieldCheck } from 'lucide-react';
+import { PackageMinus, ShieldCheck } from 'lucide-react';
 import { Label, Field, FieldError, FieldHint } from '@/components/ui/label';
 import { Alert } from '@/components/ui/alert';
 import { DynamicFieldInput } from '@/components/inventory/DynamicFieldInput';
@@ -45,6 +45,14 @@ const itemFormSchema = z.object({
   ),
   warrantyStartDate: z.string().optional(),
   warrantyEndDate: z.string().optional(),
+  minQuantity: z.preprocess(
+    (v) => (v === '' || v === null ? undefined : v),
+    z.coerce.number().min(0, 'Mənfi ola bilməz').optional(),
+  ),
+  criticalQuantity: z.preprocess(
+    (v) => (v === '' || v === null ? undefined : v),
+    z.coerce.number().min(0, 'Mənfi ola bilməz').optional(),
+  ),
   supplier: z.string().max(255).optional(),
   notes: z.string().max(2000).optional(),
 });
@@ -98,6 +106,8 @@ export function ItemFormDialog({
       warrantyMonths: undefined,
       warrantyStartDate: '',
       warrantyEndDate: '',
+      minQuantity: undefined,
+      criticalQuantity: undefined,
       supplier: '',
       notes: '',
     },
@@ -133,6 +143,8 @@ export function ItemFormDialog({
         warrantyMonths: editingItem.warrantyMonths ?? undefined,
         warrantyStartDate: editingItem.warrantyStartDate ?? '',
         warrantyEndDate: editingItem.warrantyEndDate ?? '',
+        minQuantity: editingItem.minQuantity ?? undefined,
+        criticalQuantity: editingItem.criticalQuantity ?? undefined,
         supplier: editingItem.supplier ?? '',
         notes: editingItem.notes ?? '',
       });
@@ -151,6 +163,8 @@ export function ItemFormDialog({
         warrantyMonths: undefined,
         warrantyStartDate: '',
         warrantyEndDate: '',
+        minQuantity: undefined,
+        criticalQuantity: undefined,
         supplier: '',
         notes: '',
       });
@@ -184,6 +198,8 @@ export function ItemFormDialog({
       warrantyMonths: values.warrantyMonths ?? null,
       warrantyStartDate: values.warrantyStartDate || null,
       warrantyEndDate: values.warrantyEndDate || null,
+      minQuantity: values.minQuantity ?? null,
+      criticalQuantity: values.criticalQuantity ?? null,
       supplier: values.supplier || null,
       notes: values.notes || null,
     };
@@ -380,6 +396,54 @@ export function ItemFormDialog({
               </p>
             )}
 
+          </div>
+
+          {/* Thresholds compare against the TOTAL across folders — an empty shelf while forty sit
+              in the next aisle is a moving problem, not a buying one. */}
+          <div className="mt-2 rounded-lg border border-line p-3">
+            <div className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+              <PackageMinus className="h-3.5 w-3.5 text-gold" />
+              Stok həddi
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Field className="mb-0">
+                <Label htmlFor="item-min-qty">Minimum hədd</Label>
+                <Input
+                  id="item-min-qty"
+                  type="number"
+                  step="0.001"
+                  min="0"
+                  placeholder="məsələn 10"
+                  error={Boolean(errors.minQuantity)}
+                  {...register('minQuantity')}
+                />
+                {errors.minQuantity ? (
+                  <FieldError>{errors.minQuantity.message}</FieldError>
+                ) : (
+                  <FieldHint>Ümumi qalıq bundan aşağı düşəndə xəbərdarlıq verilir.</FieldHint>
+                )}
+              </Field>
+              <Field className="mb-0">
+                <Label htmlFor="item-critical-qty">Kritik hədd</Label>
+                <Input
+                  id="item-critical-qty"
+                  type="number"
+                  step="0.001"
+                  min="0"
+                  placeholder="məsələn 3"
+                  error={Boolean(errors.criticalQuantity)}
+                  {...register('criticalQuantity')}
+                />
+                {errors.criticalQuantity ? (
+                  <FieldError>{errors.criticalQuantity.message}</FieldError>
+                ) : (
+                  <FieldHint>Minimumdan aşağı olmalıdır — iş dayanma riski.</FieldHint>
+                )}
+              </Field>
+            </div>
+          </div>
+
+          <div className="mt-2 rounded-lg border border-line p-3">
             {/* Its own field rather than a category attribute: a warranty claim is addressed to a
                 supplier, so the warranty screen filters and groups by it. */}
             <Field className="mb-0 mt-4">

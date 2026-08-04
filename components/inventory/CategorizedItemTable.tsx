@@ -12,6 +12,7 @@ import { Pagination } from '@/components/ui/pagination';
 import { ItemFormDialog } from '@/components/inventory/ItemFormDialog';
 import { ItemDetailDialog } from '@/components/inventory/ItemDetailDialog';
 import { ItemNameCell, renderAttributeValue } from '@/components/inventory/AttributeValue';
+import { StockLevelBadge } from '@/components/inventory/badges';
 import { locationSummary, quantityAt } from '@/lib/utils/stock';
 import type { InventoryCategory, InventoryNode } from '@/types/inventory';
 
@@ -120,6 +121,7 @@ function CategorySection({
                           showing the global total would misreport what is actually in front of
                           you. The product card shows the full picture. */}
                       {quantityAt(item, node.id)}
+                      <StockLevelBadge level={item.stockLevel} />
                       {item.locations.length > 1 && (
                         <span
                           className="ml-1.5 text-xs text-muted-foreground"

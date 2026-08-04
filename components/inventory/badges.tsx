@@ -1,6 +1,7 @@
 import { Badge, type BadgeVariant } from '@/components/ui/badge';
 import type {
   InventoryUnitStatus,
+  StockLevel,
   WarrantyClaimResolution,
   WarrantyClaimStatus,
   WarrantyRecordType,
@@ -49,6 +50,28 @@ export function UnitStatusBadge({ status }: { status: InventoryUnitStatus }) {
   return (
     <Badge variant={UNIT_STATUS_VARIANT[status]} size="sm">
       {UNIT_STATUS_LABEL[status]}
+    </Badge>
+  );
+}
+
+const STOCK_LEVEL_LABEL: Record<StockLevel, string> = {
+  OK: 'Normal',
+  LOW: 'Az qalıb',
+  CRITICAL: 'Kritik',
+};
+
+const STOCK_LEVEL_VARIANT: Record<StockLevel, BadgeVariant> = {
+  OK: 'ok',
+  LOW: 'warn',
+  CRITICAL: 'danger',
+};
+
+/** Only rendered when there is something to say — a "normal" badge on every row is noise. */
+export function StockLevelBadge({ level }: { level: StockLevel }) {
+  if (level === 'OK') return null;
+  return (
+    <Badge variant={STOCK_LEVEL_VARIANT[level]} size="sm">
+      {STOCK_LEVEL_LABEL[level]}
     </Badge>
   );
 }

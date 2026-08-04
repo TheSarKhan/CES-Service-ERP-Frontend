@@ -11,7 +11,9 @@ import type {
   InventoryItemUnitBatchCreateRequest,
   InventoryItemUnitUpdateRequest,
   InventoryNodeRequest,
+  InventorySettingsRequest,
   InventoryUnitSearchParams,
+  StockMovementParams,
   StockQuantityRequest,
   WarrantyClaimDecisionRequest,
   WarrantyClaimListParams,
@@ -37,6 +39,12 @@ export const inventoryKeys = {
   itemUnit: (id: string) => ['inventory', 'item-units', 'detail', id] as const,
   unitSearch: (branchId: string | null, params: InventoryUnitSearchParams) =>
     ['inventory', 'item-units', branchId, params] as const,
+  stockAlertSummary: (branchId: string | null) => ['inventory', 'stock-alerts', 'summary', branchId] as const,
+  lowStock: (branchId: string | null, criticalOnly: boolean, page: number) =>
+    ['inventory', 'stock-alerts', branchId, criticalOnly, page] as const,
+  settings: (branchId: string | null) => ['inventory', 'settings', branchId] as const,
+  stockMovements: (branchId: string | null, params: StockMovementParams) =>
+    ['inventory', 'stock-movements', branchId, params] as const,
   warrantySummary: (branchId: string | null) => ['inventory', 'warranty', 'summary', branchId] as const,
   warrantyExtensions: (target: 'items' | 'units', id: string) =>
     ['inventory', 'warranty', target, id, 'extensions'] as const,
@@ -349,6 +357,55 @@ export function useMarkInventoryItemUnitFailed() {
     mutationFn: ({ id, failureNotes }: { id: string; failureNotes?: string }) =>
       api.markInventoryItemUnitFailed(id, failureNotes),
     onSuccess: invalidate,
+  });
+}
+
+// ── Stock alerts & settings ──────────────────────────────────────────────
+
+export function useStockAlertSummary() {
+  const activeBranchId = useAuthStore((s) => s.activeBranchId);
+  return useQuery({
+    queryKey: inventoryKeys.stockAlertSummary(activeBranchId),
+    queryFn: () => api.getStockAlertSummary(),
+    enabled: Boolean(activeBranchId),
+    staleTime: 60_000,
+  });
+}
+
+export function useLowStockItems(criticalOnly = false, page = 1, size = 20) {
+  const activeBranchId = useAuthStore((s) => s.activeBranchId);
+  return useQuery({
+    queryKey: inventoryKeys.lowStock(activeBranchId, criticalOnly, page),
+    queryFn: () => api.getLowStockItems({ criticalOnly, page, size }),
+    enabled: Boolean(activeBranchId),
+  });
+}
+
+export function useInventorySettings() {
+  const activeBranchId = useAuthStore((s) => s.activeBranchId);
+  return useQuery({
+    queryKey: inventoryKeys.settings(activeBranchId),
+    queryFn: () => api.getInventorySettings(),
+    enabled: Boolean(activeBranchId),
+  });
+}
+
+export function useUpdateInventorySettings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: InventorySettingsRequest) => api.updateInventorySettings(body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['inventory', 'settings'] }),
+  });
+}
+
+// ── Stock movements ──────────────────────────────────────────────────────
+
+export function useStockMovements(params: StockMovementParams = {}, enabled = true) {
+  const activeBranchId = useAuthStore((s) => s.activeBranchId);
+  return useQuery({
+    queryKey: inventoryKeys.stockMovements(activeBranchId, params),
+    queryFn: () => api.getStockMovements(params),
+    enabled: enabled && Boolean(activeBranchId),
   });
 }
 

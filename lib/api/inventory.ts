@@ -15,7 +15,12 @@ import type {
   InventoryLookupResult,
   InventoryNode,
   InventoryNodeRequest,
+  InventorySettings,
+  InventorySettingsRequest,
   InventoryUnitSearchParams,
+  StockAlertSummary,
+  StockMovement,
+  StockMovementParams,
   StockQuantityRequest,
   WarrantyClaim,
   WarrantyClaimDecisionRequest,
@@ -175,6 +180,40 @@ export async function stockOutInventoryItem(id: string, body: StockQuantityReque
 
 export async function adjustInventoryItem(id: string, body: StockQuantityRequest): Promise<ApprovalRequest> {
   return apiPost<ApprovalRequest>(`/inventory/items/${id}/adjust`, body);
+}
+
+// ── Stock alerts & settings ──────────────────────────────────────────────
+
+export async function getStockAlertSummary(): Promise<StockAlertSummary> {
+  return apiGet<StockAlertSummary>('/inventory/stock-alerts/summary');
+}
+
+/** Products at or below their threshold, worst shortfall first. */
+export async function getLowStockItems(
+  params: { criticalOnly?: boolean; page?: number; size?: number } = {},
+): Promise<PageResponse<InventoryItem>> {
+  const page = await apiGet<RawPage<InventoryItem>>('/inventory/stock-alerts', params);
+  return { items: page.content, meta: page.meta };
+}
+
+export async function getInventorySettings(): Promise<InventorySettings> {
+  return apiGet<InventorySettings>('/inventory/settings');
+}
+
+export async function updateInventorySettings(
+  body: InventorySettingsRequest,
+): Promise<InventorySettings> {
+  return apiPut<InventorySettings>('/inventory/settings', body);
+}
+
+// ── Stock movements ──────────────────────────────────────────────────────
+
+/** GET /api/v1/inventory/stock-movements — the ledger, newest first. */
+export async function getStockMovements(
+  params: StockMovementParams = {},
+): Promise<PageResponse<StockMovement>> {
+  const page = await apiGet<RawPage<StockMovement>>('/inventory/stock-movements', params);
+  return { items: page.content, meta: page.meta };
 }
 
 // ── Warranty ─────────────────────────────────────────────────────────────

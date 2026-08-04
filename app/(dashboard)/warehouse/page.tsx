@@ -13,6 +13,11 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { NodeCardBrowser } from '@/components/inventory/NodeCardBrowser';
+import { LowStockPanel } from '@/components/inventory/LowStockPanel';
+import {
+  StockAlertBand,
+  type StockBandSelection,
+} from '@/components/inventory/StockAlertBand';
 import { QrScanDialog } from '@/components/inventory/QrScanDialog';
 import { ItemDetailDialog } from '@/components/inventory/ItemDetailDialog';
 import { useInventoryItemUnit, useInventoryNode } from '@/hooks/use-inventory';
@@ -25,6 +30,9 @@ export default function WarehousePage() {
   const [scannedNodeId, setScannedNodeId] = useState<string | null>(null);
   const [scannedItemId, setScannedItemId] = useState<string | null>(null);
   const [scannedUnitId, setScannedUnitId] = useState<string | null>(null);
+  // Clicking a band card swaps the folder browser for the list it counted; clicking it again
+  // returns. A count you cannot open is a dead end.
+  const [stockFilter, setStockFilter] = useState<StockBandSelection>(null);
 
   const { data: scannedNode } = useInventoryNode(scannedNodeId);
   const { data: scannedUnit } = useInventoryItemUnit(scannedUnitId);
@@ -63,8 +71,14 @@ export default function WarehousePage() {
         </Button>
       </div>
 
+      <StockAlertBand selected={stockFilter} onSelect={setStockFilter} />
+
       <TableWrap className="p-4">
-        <NodeCardBrowser initialNodeId={initialNodeId} />
+        {stockFilter ? (
+          <LowStockPanel criticalOnly={stockFilter === 'CRITICAL'} />
+        ) : (
+          <NodeCardBrowser initialNodeId={initialNodeId} />
+        )}
       </TableWrap>
 
       <QrScanDialog open={scanOpen} onOpenChange={setScanOpen} onResult={handleScanResult} />

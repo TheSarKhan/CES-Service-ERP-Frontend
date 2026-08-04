@@ -8,10 +8,12 @@ import { TableWrap } from '@/components/ui/table';
 import { NodeTree } from '@/components/inventory/NodeTree';
 import { NodeFormDialog } from '@/components/inventory/NodeFormDialog';
 import { CategoryManager } from '@/components/inventory/CategoryManager';
+import { InventorySettingsPanel } from '@/components/inventory/InventorySettingsPanel';
 
 const CONFIG_TABS = [
   { key: 'structure', label: 'Qovluq strukturu' },
   { key: 'categories', label: 'Kateqoriyalar' },
+  { key: 'settings', label: 'Tənzimləmələr' },
 ];
 
 export default function WarehouseConfigurationPage() {
@@ -41,6 +43,7 @@ export default function WarehouseConfigurationPage() {
         <Tabs items={CONFIG_TABS} value={configTab} onChange={setConfigTab} className="mb-4" />
         {configTab === 'structure' && <NodeTree mode="manage" />}
         {configTab === 'categories' && <CategoryManager />}
+        {configTab === 'settings' && <InventorySettingsPanel />}
       </TableWrap>
 
       <NodeFormDialog open={createRootOpen} onOpenChange={setCreateRootOpen} parentId={null} />

@@ -37,6 +37,7 @@ import { QrCodeDialog } from '@/components/inventory/QrCodeDialog';
 import { renderAttributeValue } from '@/components/inventory/AttributeValue';
 import { ApprovalSubmittedDialog } from '@/components/approval/ApprovalSubmittedDialog';
 import { ItemWarrantySection } from '@/components/inventory/ItemWarrantySection';
+import { ItemMovementsPanel } from '@/components/inventory/ItemMovementsPanel';
 import { cn } from '@/lib/utils';
 import type { InventoryFieldType } from '@/types/inventory';
 
@@ -111,6 +112,7 @@ export function ItemDetailDialog({
     { key: 'umumi', label: 'Ümumi' },
     ...(fields.length > 0 ? [{ key: 'saheler', label: 'Sahələr' }] : []),
     { key: 'zemanet', label: 'Zəmanət' },
+    { key: 'hereketler', label: 'Hərəkətlər' },
     ...(item.isSerialized ? [{ key: 'vahidler', label: 'Vahidlər' }] : []),
   ];
   // Seçilmiş tab siyahıdan çıxıbsa (məsələn sahələr silinib) ilk taba qayıdırıq.
@@ -242,6 +244,8 @@ export function ItemDetailDialog({
           )}
 
           {activeTab === 'zemanet' && <ItemWarrantySection item={item} />}
+
+          {activeTab === 'hereketler' && <ItemMovementsPanel item={item} />}
 
           {activeTab === 'saheler' && fields.length > 0 && (
             <div className="mb-4 rounded-lg border border-line p-3">

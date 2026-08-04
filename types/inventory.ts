@@ -88,6 +88,31 @@ export interface InventoryCategoryRequest {
   fields?: InventoryCategoryFieldRequest[];
 }
 
+/** Where a product's total stock sits against its thresholds. */
+export type StockLevel = 'OK' | 'LOW' | 'CRITICAL';
+
+/** Counts behind the low-stock band and sidebar badge; a product is counted once, at its worst. */
+export interface StockAlertSummary {
+  low: number;
+  critical: number;
+  total: number;
+}
+
+/** Per-branch warehouse settings. A branch with no row simply runs on defaults. */
+export interface InventorySettings {
+  notificationEmails: string[];
+  dailyDigestEnabled: boolean;
+  transferRequiresDifferentReceiver: boolean;
+  /** False when the server has no SMTP host — the screen must say so. */
+  mailConfigured: boolean;
+}
+
+export interface InventorySettingsRequest {
+  notificationEmails?: string[];
+  dailyDigestEnabled?: boolean;
+  transferRequiresDifferentReceiver?: boolean;
+}
+
 /** One folder holding a product, and how much of it sits there. */
 export interface StockLocation {
   nodeId: string;
@@ -122,6 +147,11 @@ export interface InventoryItem {
   warrantyEndDate: string | null;
   /** Derived server-side; always NONE for serialized items, whose units carry the real dates. */
   warrantyStatus: WarrantyStatus;
+  /** Reorder point for the total across every folder; null means nobody tracks a level. */
+  minQuantity: number | null;
+  criticalQuantity: number | null;
+  /** Derived from the total against the thresholds. */
+  stockLevel: StockLevel;
   /** Who a warranty claim on this product goes to. */
   supplier: string | null;
   notes: string | null;
@@ -145,6 +175,8 @@ export interface InventoryItemRequest {
   warrantyMonths?: number | null;
   warrantyStartDate?: string | null;
   warrantyEndDate?: string | null;
+  minQuantity?: number | null;
+  criticalQuantity?: number | null;
   supplier?: string | null;
   notes?: string | null;
   isActive?: boolean;
@@ -221,6 +253,45 @@ export interface InventoryUnitSearchParams {
   size?: number;
   sort?: string;
   dir?: 'asc' | 'desc';
+}
+
+// ── Stock movements (ledger) ─────────────────────────────────────────────
+
+export type StockMovementType =
+  | 'IN'
+  | 'OUT'
+  | 'ADJUST'
+  | 'TRANSFER_OUT'
+  | 'TRANSFER_IN'
+  | 'UNIT_IN'
+  | 'UNIT_OUT';
+
+/** One line of stock history. Lines are never edited — a mistake is closed with its opposite. */
+export interface StockMovement {
+  id: string;
+  itemId: string;
+  itemName: string | null;
+  nodeId: string;
+  nodeName: string | null;
+  unitId: string | null;
+  movementType: StockMovementType;
+  /** Signed: positive brought stock in, negative took it out. */
+  quantity: number;
+  balanceAfter: number;
+  referenceType: string | null;
+  referenceId: string | null;
+  reason: string | null;
+  createdBy: string | null;
+  createdByName: string | null;
+  createdAt: string;
+}
+
+export interface StockMovementParams {
+  itemId?: string;
+  nodeId?: string;
+  type?: StockMovementType;
+  page?: number;
+  size?: number;
 }
 
 /** Target of a warranty extension — a whole product, or one serialized unit of it. */
