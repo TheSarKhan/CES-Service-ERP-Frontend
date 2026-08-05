@@ -33,7 +33,8 @@ const itemFormSchema = z.object({
   categoryId: z.string().min(1, 'Kateqoriya seçin'),
   name: z.string().min(1, 'Ad tələb olunur').max(255),
   sku: z.string().min(1, 'SKU tələb olunur').max(100),
-  barcode: z.string().min(1, 'Barkod tələb olunur').max(255),
+  // Optional: the column is nullable and most products simply do not have one.
+  barcode: z.string().max(255).optional(),
   unit: z.string().min(1, 'Ölçü vahidi tələb olunur').max(50),
   quantity: z.coerce.number().min(0, 'Mənfi ola bilməz'),
   purchasePrice: z.coerce.number().min(0, 'Mənfi ola bilməz'),
@@ -60,6 +61,8 @@ const itemFormSchema = z.object({
   ),
   supplier: z.string().max(255).optional(),
   notes: z.string().max(2000).optional(),
+  openingLotNumber: z.string().max(100).optional(),
+  openingLotExpiryDate: z.string().optional(),
 });
 
 type ItemFormValues = z.infer<typeof itemFormSchema>;
@@ -201,6 +204,8 @@ export function ItemFormDialog({
       criticalQuantity: undefined,
       supplier: '',
       notes: '',
+      openingLotNumber: '',
+      openingLotExpiryDate: '',
     },
   });
 
@@ -274,6 +279,8 @@ const trackingMode: TrackingMode = watchIsSerialized
         criticalQuantity: editingItem.criticalQuantity ?? undefined,
         supplier: editingItem.supplier ?? '',
         notes: editingItem.notes ?? '',
+        openingLotNumber: '',
+        openingLotExpiryDate: '',
       });
       setAttributes(editingItem.attributes ?? {});
     } else {
@@ -296,6 +303,8 @@ const trackingMode: TrackingMode = watchIsSerialized
         criticalQuantity: undefined,
         supplier: '',
         notes: '',
+        openingLotNumber: '',
+        openingLotExpiryDate: '',
       });
       setAttributes({});
     }
@@ -357,7 +366,7 @@ const trackingMode: TrackingMode = watchIsSerialized
       categoryId: values.categoryId,
       name: values.name,
       sku: values.sku,
-      barcode: values.barcode,
+      barcode: values.barcode || null,
       unit: values.unit,
       quantity: values.quantity,
       purchasePrice: values.purchasePrice,
@@ -372,6 +381,10 @@ const trackingMode: TrackingMode = watchIsSerialized
       criticalQuantity: values.criticalQuantity ?? null,
       supplier: values.supplier || null,
       notes: values.notes || null,
+      // Only meaningful when an existing product is switched to batch tracking; the server ignores
+      // it otherwise.
+      openingLotNumber: values.openingLotNumber || null,
+      openingLotExpiryDate: values.openingLotExpiryDate || null,
     };
 
     try {
@@ -390,6 +403,12 @@ const trackingMode: TrackingMode = watchIsSerialized
         setServerError('Bu SKU artıq mövcuddur.');
       } else if (error instanceof ApiRequestError && error.code === 'ENTITY_PENDING_APPROVAL') {
         setServerError('Bu məhsulun təsdiq gözləyən dəyişikliyi var — əvvəlcə o qərara alınmalıdır.');
+      } else if (error instanceof ApiRequestError && error.code === 'TRACKING_MODE_LOCKED') {
+        setServerError(
+          'İzləmə üsulu dəyişdirilə bilməz — bu məhsulun artıq partiyası və ya seriyalı vahidi var.',
+        );
+      } else if (error instanceof ApiRequestError && error.code === 'OPENING_LOT_REQUIRED') {
+        setServerError('Rəfdəki mövcud qalıq üçün partiya nömrəsi yazın.');
       } else if (error instanceof ApiRequestError && error.code === 'NODE_CATEGORY_NOT_ALLOWED') {
         setServerError('Seçilmiş kateqoriya bu qovluq üçün icazəli deyil.');
       } else {
@@ -455,9 +474,7 @@ const trackingMode: TrackingMode = watchIsSerialized
               {errors.sku && <FieldError>{errors.sku.message}</FieldError>}
             </Field>
             <Field>
-              <Label htmlFor="item-barcode" required>
-                Barkod
-              </Label>
+              <Label htmlFor="item-barcode">Barkod</Label>
               <Input id="item-barcode" error={Boolean(errors.barcode)} {...register('barcode')} />
               {errors.barcode && <FieldError>{errors.barcode.message}</FieldError>}
             </Field>
@@ -533,9 +550,7 @@ const trackingMode: TrackingMode = watchIsSerialized
                     trackingMode === mode.value
                       ? 'border-gold bg-gold/5'
                       : 'border-line hover:bg-graphite-50',
-                    // Changing it later would orphan the units or batches already recorded, so it
-                    // is decided once, when the product is created.
-                    isEditing ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
+                    'cursor-pointer',
                   )}
                 >
                   <span className="flex items-center gap-2">
@@ -545,7 +560,6 @@ const trackingMode: TrackingMode = watchIsSerialized
                       className="chk"
                       value={mode.value}
                       checked={trackingMode === mode.value}
-                      disabled={isEditing}
                       onChange={() => pickTrackingMode(mode.value)}
                     />
                     {/* Never wraps: three labels breaking onto three lines each turned this row
@@ -558,7 +572,46 @@ const trackingMode: TrackingMode = watchIsSerialized
                 </label>
               ))}
             </div>
+            {isEditing && (
+              <FieldHint>
+                Yalnız heç bir partiya və seriyalı vahid qeyd olunmayıbsa dəyişdirilə bilər.
+              </FieldHint>
+            )}
           </Field>
+
+          {/* The stock already on the shelf is some batch; switching on without naming it would
+              leave the product reporting a total its batches do not add up to. */}
+          {isEditing && watchIsLotTracked && !editingItem?.isLotTracked && (
+            <div className="mt-2 rounded-lg border border-info/40 bg-info/5 p-3">
+              <div className="mb-2 text-sm font-semibold">
+                Rəfdəki {editingItem?.totalQuantity} {editingItem?.unit} hansı partiyadır?
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Field className="mb-0">
+                  <Label htmlFor="item-opening-lot" required>
+                    Partiya nömrəsi
+                  </Label>
+                  <Input
+                    id="item-opening-lot"
+                    placeholder="məsələn LOT-2411"
+                    {...register('openingLotNumber')}
+                  />
+                </Field>
+                <Field className="mb-0">
+                  <Label htmlFor="item-opening-expiry">Son istifadə tarixi</Label>
+                  <Input
+                    id="item-opening-expiry"
+                    type="date"
+                    {...register('openingLotExpiryDate')}
+                  />
+                </Field>
+              </div>
+              <FieldHint>
+                Mövcud qalıq bu partiyaya bağlanacaq — yeni mal gəlmir, eyni mal sadəcə daha
+                ətraflı yazılır.
+              </FieldHint>
+            </div>
+          )}
 
           {watchIsLotTracked && (
             <Field className="mt-2">

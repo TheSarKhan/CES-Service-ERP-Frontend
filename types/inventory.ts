@@ -172,7 +172,8 @@ export interface InventoryItemRequest {
   categoryId: string;
   name: string;
   sku: string;
-  barcode: string;
+  /** Optional — most products do not carry one. */
+  barcode?: string | null;
   unit: string;
   quantity: number;
   purchasePrice: number;
@@ -188,6 +189,9 @@ export interface InventoryItemRequest {
   supplier?: string | null;
   notes?: string | null;
   isActive?: boolean;
+  /** Which batch the stock already held belongs to; read only when switching tracking on. */
+  openingLotNumber?: string | null;
+  openingLotExpiryDate?: string | null;
 }
 
 export interface StockQuantityRequest {
