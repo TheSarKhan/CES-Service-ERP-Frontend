@@ -30,6 +30,26 @@ export function WarrantyStatusBadge({ status }: { status: WarrantyStatus }) {
   );
 }
 
+/**
+ * A batch's shelf life. Same four states as a warranty and the same colours, but not the same
+ * words: oil does not have a warranty, it has a date after which it is no longer oil. Reusing the
+ * warranty wording put "Zəmanətli" on a drum of engine oil, which reads as a claim nobody made.
+ */
+const EXPIRY_LABEL: Record<WarrantyStatus, string> = {
+  NONE: 'Tarixsiz',
+  ACTIVE: 'Yararlı',
+  EXPIRING_SOON: 'Bitməkdə',
+  EXPIRED: 'Vaxtı keçib',
+};
+
+export function ExpiryStatusBadge({ status }: { status: WarrantyStatus }) {
+  return (
+    <Badge variant={WARRANTY_VARIANT[status]} size="sm">
+      {EXPIRY_LABEL[status]}
+    </Badge>
+  );
+}
+
 const UNIT_STATUS_LABEL: Record<InventoryUnitStatus, string> = {
   IN_STOCK: 'Stokda',
   IN_USE: 'İstifadədə',

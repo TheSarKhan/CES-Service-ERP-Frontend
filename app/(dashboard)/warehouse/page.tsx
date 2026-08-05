@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { NodeCardBrowser } from '@/components/inventory/NodeCardBrowser';
 import { LowStockPanel } from '@/components/inventory/LowStockPanel';
+import { ExpiringLotsPanel } from '@/components/inventory/ExpiringLotsPanel';
 import {
   StockAlertBand,
   type StockBandSelection,
@@ -74,7 +75,9 @@ export default function WarehousePage() {
       <StockAlertBand selected={stockFilter} onSelect={setStockFilter} />
 
       <TableWrap className="p-4">
-        {stockFilter ? (
+        {stockFilter === 'EXPIRING' ? (
+          <ExpiringLotsPanel />
+        ) : stockFilter ? (
           <LowStockPanel criticalOnly={stockFilter === 'CRITICAL'} />
         ) : (
           <NodeCardBrowser initialNodeId={initialNodeId} />

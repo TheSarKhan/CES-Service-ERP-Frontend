@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Badge } from '@/components/ui/badge';
-import { WarrantyStatusBadge } from '@/components/inventory/badges';
+import { ExpiryStatusBadge } from '@/components/inventory/badges';
 import { useItemLots, useReceiveLot, useWriteOffLot } from '@/hooks/use-inventory';
 import { defaultLocation } from '@/lib/utils/stock';
 import { formatDate } from '@/lib/utils/format';
@@ -140,7 +140,7 @@ export function ItemLotsPanel({
                     <span className="text-xs text-muted-foreground">
                       {formatDate(lot.expiryDate)}
                     </span>
-                    <WarrantyStatusBadge status={lot.expiryStatus} />
+                    <ExpiryStatusBadge status={lot.expiryStatus} />
                   </>
                 ) : (
                   <span className="text-xs text-muted-foreground">tarixsiz</span>

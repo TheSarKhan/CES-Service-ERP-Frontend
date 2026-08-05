@@ -91,11 +91,15 @@ export interface InventoryCategoryRequest {
 /** Where a product's total stock sits against its thresholds. */
 export type StockLevel = 'OK' | 'LOW' | 'CRITICAL';
 
-/** Counts behind the low-stock band and sidebar badge; a product is counted once, at its worst. */
+/** Counts behind the warehouse attention band; a product is counted once, at its worst. */
 export interface StockAlertSummary {
   low: number;
   critical: number;
+  /** Products only — this drives the sidebar badge, so batches stay out of it. */
   total: number;
+  /** Batches inside the expiry warning horizon, and ones already past it. */
+  expiringLots: number;
+  expiredLots: number;
 }
 
 /** Per-branch warehouse settings. A branch with no row simply runs on defaults. */

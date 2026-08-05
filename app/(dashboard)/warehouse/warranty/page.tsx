@@ -5,7 +5,6 @@ import { TableWrap } from '@/components/ui/table';
 import { Tabs } from '@/components/ui/tabs';
 import { WarrantySearchPanel } from '@/components/inventory/WarrantySearchPanel';
 import { WarrantyClaimsPanel } from '@/components/inventory/WarrantyClaimsPanel';
-import { ExpiringLotsPanel } from '@/components/inventory/ExpiringLotsPanel';
 import {
   WarrantyExpiryBand,
   type ExpiryBandSelection,
@@ -15,7 +14,6 @@ import type { WarrantyClaimStatus, WarrantyStatus } from '@/types/inventory';
 const TABS = [
   { key: 'records', label: 'Zəmanətlər' },
   { key: 'claims', label: 'Tələblər' },
-  { key: 'lots', label: 'Partiyalar' },
 ];
 
 /**
@@ -54,7 +52,7 @@ export default function WarehouseWarrantyPage() {
       <div>
         <h1 className="text-2xl font-extrabold tracking-tight">Zəmanət</h1>
         <p className="text-sm text-muted-foreground">
-          Zəmanət müddətləri, təchizatçı tələbləri və bitmək üzrə partiyalar
+          Zəmanət müddətləri və təchizatçı tələbləri
         </p>
       </div>
 
@@ -72,9 +70,6 @@ export default function WarehouseWarrantyPage() {
         {tab === 'claims' && (
           <WarrantyClaimsPanel status={claimStatus} onStatusChange={setClaimStatus} />
         )}
-        {/* Batches sit here because they answer the same question in a different currency:
-            something is about to stop being usable and there is a window to act. */}
-        {tab === 'lots' && <ExpiringLotsPanel />}
       </TableWrap>
     </div>
   );

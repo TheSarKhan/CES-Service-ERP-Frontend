@@ -14,7 +14,7 @@ import {
 import { Empty } from '@/components/ui/empty';
 import { Alert } from '@/components/ui/alert';
 import { Pagination } from '@/components/ui/pagination';
-import { WarrantyStatusBadge } from '@/components/inventory/badges';
+import { ExpiryStatusBadge } from '@/components/inventory/badges';
 import { ItemDetailDialog } from '@/components/inventory/ItemDetailDialog';
 import { useExpiringLots } from '@/hooks/use-inventory';
 import { formatDate } from '@/lib/utils/format';
@@ -30,13 +30,19 @@ const HORIZONS = [
 ];
 
 /**
+ * The horizon the attention band counts, so opening the card shows exactly what it counted.
+ * Mirrors `InventoryLotService.BAND_HORIZON_DAYS`; the two have to move together.
+ */
+const DEFAULT_HORIZON = 90;
+
+/**
  * Batches running out of time, soonest first.
  *
- * Lives beside the warranty search because it answers the same question in a different currency:
- * something is about to stop being usable, and there is a window to act before it does.
+ * Reached from the warehouse attention band, beside "running low" — both say the same thing in
+ * different currencies: something needs a decision today, and there is still a window to make it.
  */
 export function ExpiringLotsPanel() {
-  const [withinDays, setWithinDays] = useState(90);
+  const [withinDays, setWithinDays] = useState(DEFAULT_HORIZON);
   const [page, setPage] = useState(1);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
@@ -115,7 +121,7 @@ export function ExpiringLotsPanel() {
                 <TableCell>
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="font-semibold">{formatDate(lot.expiryDate)}</span>
-                    <WarrantyStatusBadge status={lot.expiryStatus} />
+                    <ExpiryStatusBadge status={lot.expiryStatus} />
                   </div>
                   {lot.daysRemaining !== null && (
                     <div
