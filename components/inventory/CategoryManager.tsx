@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Empty } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert } from '@/components/ui/alert';
+import { SortableTableHead, useClientSort, type SortState } from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
@@ -98,6 +99,12 @@ export function CategoryManager() {
   const [listError, setListError] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [draggedFieldId, setDraggedFieldId] = useState<string | null>(null);
+  /**
+   * Null means the rows are in the order you dragged them into, which is the order they render in
+   * everywhere else. Sorting is a way to *look* at them, so dragging turns off while it is on —
+   * dropping a row in a sorted view would write positions derived from an order nobody can see.
+   */
+  const [fieldSort, setFieldSort] = useState<SortState | null>(null);
   const [approvalSent, setApprovalSent] = useState<string | null>(null);
 
   useEffect(() => {
@@ -107,6 +114,16 @@ export function CategoryManager() {
   }, [categories, selectedId]);
 
   const selectedCategory = categories?.find((c) => c.id === selectedId) ?? null;
+  const sortedFields = useClientSort(
+    selectedCategory?.fields ?? [],
+    fieldSort,
+    // Booleans compare as numbers so "required first" is a real order rather than "false" vs "true"
+    // as text, which would put the ticked rows last in ascending.
+    (field, key) =>
+      key === 'isRequired' || key === 'showInTable'
+        ? Number(field[key])
+        : (field[key as keyof typeof field] as string),
+  );
 
   const { register, handleSubmit, reset } = useForm<NewFieldForm>({
     defaultValues: { label: '', fieldType: 'TEXT', isRequired: false, showInTable: false },
@@ -382,20 +399,41 @@ export function CategoryManager() {
                               too little room and wrapped both the headings and the name badges. */}
                           <tr>
                             <th className="w-8" />
-                            <th>Ad</th>
-                            <th className="w-[120px]">Tip</th>
-                            <th className="w-[110px] whitespace-nowrap text-center">Məcburi</th>
-                            <th className="w-[170px] whitespace-nowrap text-center">
+                            <SortableTableHead field="label" sort={fieldSort} onSortChange={setFieldSort}>
+                              Ad
+                            </SortableTableHead>
+                            <SortableTableHead
+                              field="fieldType"
+                              sort={fieldSort}
+                              onSortChange={setFieldSort}
+                              className="w-[120px]"
+                            >
+                              Tip
+                            </SortableTableHead>
+                            <SortableTableHead
+                              field="isRequired"
+                              sort={fieldSort}
+                              onSortChange={setFieldSort}
+                              className="w-[110px] whitespace-nowrap text-center"
+                            >
+                              Məcburi
+                            </SortableTableHead>
+                            <SortableTableHead
+                              field="showInTable"
+                              sort={fieldSort}
+                              onSortChange={setFieldSort}
+                              className="w-[170px] whitespace-nowrap text-center"
+                            >
                               Cədvəldə göstər
-                            </th>
+                            </SortableTableHead>
                             <th className="r w-[96px]">Əməliyyat</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {(selectedCategory.fields ?? []).map((field) => (
+                          {sortedFields.map((field) => (
                             <tr
                               key={field.id}
-                              draggable
+                              draggable={!fieldSort}
                               onDragStart={() => setDraggedFieldId(field.id)}
                               onDragOver={(e) => e.preventDefault()}
                               onDrop={() => handleFieldDrop(field.id)}

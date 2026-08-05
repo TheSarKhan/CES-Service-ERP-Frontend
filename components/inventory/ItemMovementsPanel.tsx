@@ -7,6 +7,16 @@ import { Empty } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert } from '@/components/ui/alert';
 import { Pagination } from '@/components/ui/pagination';
+import {
+  SortableTableHead,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  type SortState,
+} from '@/components/ui/table';
 import { useStockMovements } from '@/hooks/use-inventory';
 import { formatDateTime } from '@/lib/utils/format';
 import { cn } from '@/lib/utils';
@@ -48,10 +58,19 @@ function formatQuantity(value: number): string {
  */
 export function ItemMovementsPanel({ item }: { item: InventoryItem }) {
   const [page, setPage] = useState(1);
+  const [sort, setSort] = useState<SortState>({ field: 'createdAt', dir: 'desc' });
+
+  function changeSort(next: SortState) {
+    setSort(next);
+    setPage(1);
+  }
+
   const { data, isLoading, isError } = useStockMovements({
     itemId: item.id,
     page,
     size: PAGE_SIZE,
+    sort: sort.field,
+    dir: sort.dir,
   });
 
   const movements = data?.items ?? [];
@@ -87,36 +106,75 @@ export function ItemMovementsPanel({ item }: { item: InventoryItem }) {
 
   return (
     <div>
-      <ul className="space-y-1.5">
-        {movements.map((movement) => {
-          const incoming = movement.quantity > 0;
-          return (
-            <li
-              key={movement.id}
-              className="rounded-lg border border-line px-3 py-2.5 text-sm"
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <SortableTableHead
+              field="createdAt"
+              sort={sort}
+              onSortChange={changeSort}
+              defaultDir="desc"
             >
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant={TYPE_VARIANT[movement.movementType]} size="sm">
-                  {TYPE_LABEL[movement.movementType]}
-                </Badge>
-                <span className={cn('mono font-bold', incoming ? 'text-ok' : 'text-danger')}>
+              Tarix
+            </SortableTableHead>
+            <SortableTableHead field="movementType" sort={sort} onSortChange={changeSort}>
+              Hərəkət
+            </SortableTableHead>
+            <SortableTableHead
+              field="quantity"
+              sort={sort}
+              onSortChange={changeSort}
+              className="r"
+            >
+              Miqdar
+            </SortableTableHead>
+            <SortableTableHead
+              field="balanceAfter"
+              sort={sort}
+              onSortChange={changeSort}
+              className="r"
+            >
+              Qalıq
+            </SortableTableHead>
+            <TableHead>Qovluq</TableHead>
+            <TableHead>Səbəb</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {movements.map((movement) => {
+            const incoming = movement.quantity > 0;
+            return (
+              <TableRow key={movement.id}>
+                <TableCell>
+                  {/* Both on one line each: a wrapped timestamp and a wrapped name turned every
+                      row three lines tall for no gain. */}
+                  <div className="whitespace-nowrap">{formatDateTime(movement.createdAt)}</div>
+                  {movement.createdByName && (
+                    <div className="truncate text-xs text-muted-foreground">
+                      {movement.createdByName}
+                    </div>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Badge variant={TYPE_VARIANT[movement.movementType]} size="sm">
+                    {TYPE_LABEL[movement.movementType]}
+                  </Badge>
+                </TableCell>
+                {/* The sign is the whole point of a ledger line, so it stays even in a table. */}
+                <TableCell className={cn('r mono font-bold', incoming ? 'text-ok' : 'text-danger')}>
                   {incoming ? '+' : '−'}
                   {formatQuantity(Math.abs(movement.quantity))} {item.unit}
-                </span>
-                <span className="text-muted-foreground">{movement.nodeName ?? 'Qovluq'}</span>
-                <span className="ml-auto mono text-xs text-muted-foreground">
-                  qalıq: {formatQuantity(movement.balanceAfter)}
-                </span>
-              </div>
-              <div className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-                <span>{formatDateTime(movement.createdAt)}</span>
-                {movement.createdByName && <span>· {movement.createdByName}</span>}
-                {movement.reason && <span>· {movement.reason}</span>}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+                </TableCell>
+                <TableCell className="r mono">{formatQuantity(movement.balanceAfter)}</TableCell>
+                <TableCell className="text-muted-foreground">
+                  {movement.nodeName ?? 'Qovluq'}
+                </TableCell>
+                <TableCell className="text-muted-foreground">{movement.reason ?? '—'}</TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
 
       {meta && meta.total_items > PAGE_SIZE && (
         <Pagination

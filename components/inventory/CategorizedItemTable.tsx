@@ -112,7 +112,15 @@ function CategorySection({
                   {tableFields.map((field) => (
                     <th key={field.id}>{field.label}</th>
                   ))}
-                  <th className="r">Miqdar</th>
+                  <SortableTableHead
+                    field="totalQuantity"
+                    sort={sort}
+                    onSortChange={changeSort}
+                    defaultDir="desc"
+                    className="r"
+                  >
+                    Miqdar
+                  </SortableTableHead>
                   <th className="r">Əməliyyat</th>
                 </tr>
               </thead>

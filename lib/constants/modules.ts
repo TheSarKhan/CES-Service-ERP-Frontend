@@ -1,6 +1,5 @@
 import {
   LayoutDashboard,
-  Truck,
   Users,
   ClipboardList,
   Wrench,
@@ -75,13 +74,6 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Əməliyyatlar',
     modules: [
-      {
-        key: 'M03_VEHICLES',
-        label: 'Qaraj (Texnika)',
-        href: '/vehicles',
-        icon: Truck,
-        permission: 'VEHICLE_READ',
-      },
       {
         key: 'M04_CUSTOMERS',
         label: 'Müştərilər',

@@ -226,9 +226,17 @@ export function ProductSearchPanel() {
                   Barkod
                 </SortableTableHead>
                 <th>Kateqoriya</th>
-                {/* Quantity is a sum over inventory_stock, not a column here, so there is nothing
-                    for the server to order by and an arrow would sort by nothing. */}
-                <th className="r">Miqdar</th>
+                {/* Not a column but a sum over inventory_stock; the server orders by the same
+                    expression it reports, so the arrow is honest. */}
+                <SortableTableHead
+                  field="totalQuantity"
+                  sort={sort}
+                  onSortChange={changeSort}
+                  defaultDir="desc"
+                  className="r"
+                >
+                  Miqdar
+                </SortableTableHead>
                 <th>Yer</th>
                 <th className="r">Əməliyyat</th>
               </tr>
