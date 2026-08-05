@@ -422,6 +422,8 @@ export interface WarrantyRecordSearchParams {
   withinDays?: number;
   page?: number;
   size?: number;
+  sort?: string;
+  dir?: 'asc' | 'desc';
 }
 
 // ── Warranty claims ──────────────────────────────────────────────────────

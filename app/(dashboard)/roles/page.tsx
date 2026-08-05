@@ -4,14 +4,16 @@ import { Fragment, useState } from 'react';
 import { ChevronDown, Pencil, Search, ShieldCheck, Trash2 } from 'lucide-react';
 import { useDeleteRole, useRoles } from '@/hooks/use-roles';
 import {
-  TableWrap,
-  TableTools,
+  SortableTableHead,
   Table,
-  TableHeader,
   TableBody,
-  TableHead,
-  TableRow,
   TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableTools,
+  TableWrap,
+  type SortState,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Pagination } from '@/components/ui/pagination';
@@ -38,12 +40,18 @@ export default function RolesPage() {
   const [deletingRole, setDeletingRole] = useState<Role | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const deleteRole = useDeleteRole();
+  const [sort, setSort] = useState<SortState>({ field: 'name', dir: 'asc' });
+
+  function changeSort(next: SortState) {
+    setSort(next);
+    setPage(1);
+  }
 
   const { data, isLoading, isError, error } = useRoles({
     page,
     size: PAGE_SIZE,
-    sort: 'name',
-    dir: 'asc',
+    sort: sort.field,
+    dir: sort.dir,
   });
 
   const allRoles = data?.items ?? [];
@@ -115,9 +123,15 @@ export default function RolesPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Ad</TableHead>
-              <TableHead>Açıqlama</TableHead>
-              <TableHead>Status</TableHead>
+              <SortableTableHead field="name" sort={sort} onSortChange={changeSort}>
+                Ad
+              </SortableTableHead>
+              <SortableTableHead field="description" sort={sort} onSortChange={changeSort}>
+                Açıqlama
+              </SortableTableHead>
+              <SortableTableHead field="isActive" sort={sort} onSortChange={changeSort}>
+                Status
+              </SortableTableHead>
               <TableHead className="w-act" />
             </TableRow>
           </TableHeader>

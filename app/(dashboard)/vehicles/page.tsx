@@ -5,14 +5,16 @@ import { Search, Truck, Plus } from 'lucide-react';
 import { useVehicles } from '@/hooks/use-vehicles';
 import type { GarageType, VehicleStatus } from '@/types/vehicle';
 import {
-  TableWrap,
-  TableTools,
+  SortableTableHead,
   Table,
-  TableHeader,
   TableBody,
-  TableHead,
-  TableRow,
   TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableTools,
+  TableWrap,
+  type SortState,
 } from '@/components/ui/table';
 import { Badge, type BadgeVariant } from '@/components/ui/badge';
 import { Pagination } from '@/components/ui/pagination';
@@ -46,11 +48,18 @@ export default function VehiclesPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
 
+  const [sort, setSort] = useState<SortState>({ field: 'createdAt', dir: 'desc' });
+
+  function changeSort(next: SortState) {
+    setSort(next);
+    setPage(1);
+  }
+
   const { data, isLoading, isError, error } = useVehicles({
     page,
     size: PAGE_SIZE,
-    sort: 'created_at',
-    dir: 'desc',
+    sort: sort.field,
+    dir: sort.dir,
     search: search || undefined,
   });
 
@@ -107,11 +116,21 @@ export default function VehiclesPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Marka / Model</TableHead>
-              <TableHead>Növ</TableHead>
-              <TableHead>Qaraj növü</TableHead>
-              <TableHead>Şassi nömrəsi</TableHead>
-              <TableHead>Qeydiyyat</TableHead>
+              <SortableTableHead field="make" sort={sort} onSortChange={changeSort}>
+                Marka / Model
+              </SortableTableHead>
+              <SortableTableHead field="vehicleType" sort={sort} onSortChange={changeSort}>
+                Növ
+              </SortableTableHead>
+              <SortableTableHead field="garageType" sort={sort} onSortChange={changeSort}>
+                Qaraj növü
+              </SortableTableHead>
+              <SortableTableHead field="chassisNumber" sort={sort} onSortChange={changeSort}>
+                Şassi nömrəsi
+              </SortableTableHead>
+              <SortableTableHead field="plateNumber" sort={sort} onSortChange={changeSort}>
+                Qeydiyyat
+              </SortableTableHead>
               <TableHead className="r">Status</TableHead>
             </TableRow>
           </TableHeader>

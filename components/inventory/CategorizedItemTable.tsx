@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { Package, Plus } from 'lucide-react';
+import { SortableTableHead, type SortState } from '@/components/ui/table';
 import { useInventoryCategories, useInventoryItemCategoryIds, useInventoryItems } from '@/hooks/use-inventory';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -37,11 +38,20 @@ function CategorySection({
   onSelectItem: (itemId: string) => void;
 }) {
   const [page, setPage] = useState(1);
+  const [sort, setSort] = useState<SortState>({ field: 'name', dir: 'asc' });
+
+  function changeSort(next: SortState) {
+    setSort(next);
+    setPage(1);
+  }
+
   const { data, isLoading, isError } = useInventoryItems({
     nodeId: node.id,
     categoryId,
     page,
     size: SECTION_PAGE_SIZE,
+    sort: sort.field,
+    dir: sort.dir,
   });
   const items = data?.items ?? [];
   const meta = data?.meta;
@@ -87,10 +97,18 @@ function CategorySection({
             <table className="tbl w-full">
               <thead>
                 <tr>
-                  <th>Ad</th>
-                  <th>SKU</th>
-                  <th>Barkod</th>
-                  <th>Ölçü vahidi</th>
+                  <SortableTableHead field="name" sort={sort} onSortChange={changeSort}>
+                    Ad
+                  </SortableTableHead>
+                  <SortableTableHead field="sku" sort={sort} onSortChange={changeSort}>
+                    SKU
+                  </SortableTableHead>
+                  <SortableTableHead field="barcode" sort={sort} onSortChange={changeSort}>
+                    Barkod
+                  </SortableTableHead>
+                  <SortableTableHead field="unit" sort={sort} onSortChange={changeSort}>
+                    Ölçü vahidi
+                  </SortableTableHead>
                   {tableFields.map((field) => (
                     <th key={field.id}>{field.label}</th>
                   ))}

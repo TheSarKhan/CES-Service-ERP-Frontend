@@ -11,6 +11,7 @@ import { Empty } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert } from '@/components/ui/alert';
 import { Pagination } from '@/components/ui/pagination';
+import { SortableTableHead, type SortState } from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
@@ -123,11 +124,24 @@ export function ProductSearchPanel() {
   const [categoryId, setCategoryId] = useState('');
   const [page, setPage] = useState(1);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [sort, setSort] = useState<SortState>({ field: 'name', dir: 'asc' });
+
+  function changeSort(next: SortState) {
+    setSort(next);
+    setPage(1);
+  }
 
   const hasQuery = search.trim().length > 0;
   const { data: categories } = useInventoryCategories();
   const { data, isLoading, isError } = useInventoryItems(
-    { search, categoryId: categoryId || undefined, page, size: PAGE_SIZE },
+    {
+      search,
+      categoryId: categoryId || undefined,
+      page,
+      size: PAGE_SIZE,
+      sort: sort.field,
+      dir: sort.dir,
+    },
     hasQuery,
   );
   const items = data?.items ?? [];
@@ -199,13 +213,21 @@ export function ProductSearchPanel() {
           <table className="tbl w-full">
             <thead>
               <tr>
-                <th>Ad</th>
+                <SortableTableHead field="name" sort={sort} onSortChange={changeSort}>
+                  Ad
+                </SortableTableHead>
                 {SYSTEM_FIELD_COLUMNS.map((col) => (
                   <th key={col.key}>{col.label}</th>
                 ))}
-                <th>SKU</th>
-                <th>Barkod</th>
+                <SortableTableHead field="sku" sort={sort} onSortChange={changeSort}>
+                  SKU
+                </SortableTableHead>
+                <SortableTableHead field="barcode" sort={sort} onSortChange={changeSort}>
+                  Barkod
+                </SortableTableHead>
                 <th>Kateqoriya</th>
+                {/* Quantity is a sum over inventory_stock, not a column here, so there is nothing
+                    for the server to order by and an arrow would sort by nothing. */}
                 <th className="r">Miqdar</th>
                 <th>Yer</th>
                 <th className="r">Əməliyyat</th>

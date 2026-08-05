@@ -3,14 +3,16 @@
 import { useState } from 'react';
 import { KeyRound, Pencil, Plus, Power, Search, Trash2, Users as UsersIcon } from 'lucide-react';
 import {
-  TableWrap,
-  TableTools,
+  SortableTableHead,
   Table,
-  TableHeader,
   TableBody,
-  TableHead,
-  TableRow,
   TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableTools,
+  TableWrap,
+  type SortState,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -58,10 +60,19 @@ export default function UsersPage() {
   const deleteUser = useDeleteUser();
   const resetPassword = useResetUserPassword();
 
+  const [sort, setSort] = useState<SortState>({ field: 'createdAt', dir: 'desc' });
+
+  function changeSort(next: SortState) {
+    setSort(next);
+    setPage(1);
+  }
+
   const { data, isLoading, isError, error } = useUsers({
     page,
     size: PAGE_SIZE,
     isActive: status === 'all' ? undefined : status === 'active',
+    sort: sort.field,
+    dir: sort.dir,
   });
 
   // The list endpoint has no text search, so the query filters the fetched page. Pagination is
@@ -172,10 +183,23 @@ export default function UsersPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Ad</TableHead>
-              <TableHead>Vəzifə</TableHead>
-              <TableHead>Son giriş</TableHead>
-              <TableHead>Status</TableHead>
+              <SortableTableHead field="fullName" sort={sort} onSortChange={changeSort}>
+                Ad
+              </SortableTableHead>
+              <SortableTableHead field="position" sort={sort} onSortChange={changeSort}>
+                Vəzifə
+              </SortableTableHead>
+              <SortableTableHead
+                field="lastLoginAt"
+                sort={sort}
+                onSortChange={changeSort}
+                defaultDir="desc"
+              >
+                Son giriş
+              </SortableTableHead>
+              <SortableTableHead field="isActive" sort={sort} onSortChange={changeSort}>
+                Status
+              </SortableTableHead>
               <TableHead className="w-act" />
             </TableRow>
           </TableHeader>

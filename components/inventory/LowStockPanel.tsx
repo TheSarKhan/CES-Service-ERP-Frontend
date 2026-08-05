@@ -3,12 +3,14 @@
 import { useState } from 'react';
 import { PackageCheck } from 'lucide-react';
 import {
+  SortableTableHead,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
+  type SortState,
 } from '@/components/ui/table';
 import { Empty } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -30,8 +32,16 @@ const PAGE_SIZE = 20;
  */
 export function LowStockPanel({ criticalOnly }: { criticalOnly: boolean }) {
   const [page, setPage] = useState(1);
+  // No default sort: the listing's own "worst shortfall first" is the point of the screen, and it
+  // only stays in force while nothing else is chosen.
+  const [sort, setSort] = useState<SortState | null>(null);
+
+  function changeSort(next: SortState) {
+    setSort(next);
+    setPage(1);
+  }
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-  const { data, isLoading, isError } = useLowStockItems(criticalOnly, page, PAGE_SIZE);
+  const { data, isLoading, isError } = useLowStockItems(criticalOnly, page, PAGE_SIZE, sort?.field, sort?.dir);
 
   const items = data?.items ?? [];
   const meta = data?.meta;
@@ -49,10 +59,14 @@ export function LowStockPanel({ criticalOnly }: { criticalOnly: boolean }) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Məhsul</TableHead>
+            <SortableTableHead field="name" sort={sort} onSortChange={changeSort}>
+              Məhsul
+            </SortableTableHead>
             <TableHead>Yerlər</TableHead>
             <TableHead className="r">Qalıq</TableHead>
-            <TableHead className="r">Hədd</TableHead>
+            <SortableTableHead field="min_quantity" sort={sort} onSortChange={changeSort} className="r">
+              Hədd
+            </SortableTableHead>
             <TableHead>Vəziyyət</TableHead>
           </TableRow>
         </TableHeader>

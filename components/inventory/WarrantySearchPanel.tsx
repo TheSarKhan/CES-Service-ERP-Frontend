@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { FileWarning, Search, ShieldAlert, SlidersHorizontal, X } from 'lucide-react';
 import {
+  SortableTableHead,
   Table,
   TableBody,
   TableCell,
@@ -10,6 +11,7 @@ import {
   TableHeader,
   TableRow,
   TableTools,
+  type SortState,
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -120,6 +122,13 @@ export function WarrantySearchPanel({
   const [endTo, setEndTo] = useState('');
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [page, setPage] = useState(1);
+  // Null keeps the listing's own soonest-expiry-first order, which is what the screen is for.
+  const [sort, setSort] = useState<SortState | null>(null);
+
+  function changeSort(next: SortState) {
+    setSort(next);
+    setPage(1);
+  }
 
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [claimTarget, setClaimTarget] = useState<WarrantyRecord | null>(null);
@@ -137,6 +146,8 @@ export function WarrantySearchPanel({
     endTo: endTo || undefined,
     page,
     size: PAGE_SIZE,
+    sort: sort?.field,
+    dir: sort?.dir,
   });
 
   const records = data?.items ?? [];
@@ -335,10 +346,18 @@ export function WarrantySearchPanel({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Məhsul / Seriya</TableHead>
-            <TableHead>Təchizatçı</TableHead>
-            <TableHead>Zəmanət bitir</TableHead>
-            <TableHead>Status</TableHead>
+            <SortableTableHead field="itemName" sort={sort} onSortChange={changeSort}>
+              Məhsul / Seriya
+            </SortableTableHead>
+            <SortableTableHead field="supplier" sort={sort} onSortChange={changeSort}>
+              Təchizatçı
+            </SortableTableHead>
+            <SortableTableHead field="warrantyEndDate" sort={sort} onSortChange={changeSort}>
+              Zəmanət bitir
+            </SortableTableHead>
+            <SortableTableHead field="unitStatus" sort={sort} onSortChange={changeSort}>
+              Status
+            </SortableTableHead>
             <TableHead>Tələb</TableHead>
             <TableHead className="w-act" />
           </TableRow>

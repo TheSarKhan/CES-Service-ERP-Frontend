@@ -386,11 +386,17 @@ export function useStockAlertSummary() {
   });
 }
 
-export function useLowStockItems(criticalOnly = false, page = 1, size = 20) {
+export function useLowStockItems(
+  criticalOnly = false,
+  page = 1,
+  size = 20,
+  sort?: string,
+  dir?: 'asc' | 'desc',
+) {
   const activeBranchId = useAuthStore((s) => s.activeBranchId);
   return useQuery({
-    queryKey: inventoryKeys.lowStock(activeBranchId, criticalOnly, page),
-    queryFn: () => api.getLowStockItems({ criticalOnly, page, size }),
+    queryKey: [...inventoryKeys.lowStock(activeBranchId, criticalOnly, page), sort, dir] as const,
+    queryFn: () => api.getLowStockItems({ criticalOnly, page, size, sort, dir }),
     enabled: Boolean(activeBranchId),
   });
 }
@@ -422,11 +428,17 @@ export function useItemLots(itemId: string | null, enabled = true) {
   });
 }
 
-export function useExpiringLots(withinDays = 30, page = 1, size = 20) {
+export function useExpiringLots(
+  withinDays = 30,
+  page = 1,
+  size = 20,
+  sort?: string,
+  dir?: 'asc' | 'desc',
+) {
   const activeBranchId = useAuthStore((s) => s.activeBranchId);
   return useQuery({
-    queryKey: [...inventoryKeys.expiringLots(activeBranchId, withinDays), page] as const,
-    queryFn: () => api.getExpiringLots({ withinDays, page, size }),
+    queryKey: [...inventoryKeys.expiringLots(activeBranchId, withinDays), page, sort, dir] as const,
+    queryFn: () => api.getExpiringLots({ withinDays, page, size, sort, dir }),
     enabled: Boolean(activeBranchId),
   });
 }

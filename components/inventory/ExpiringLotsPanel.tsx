@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Boxes } from 'lucide-react';
 import {
+  SortableTableHead,
   Table,
   TableBody,
   TableCell,
@@ -10,6 +11,7 @@ import {
   TableHeader,
   TableRow,
   TableTools,
+  type SortState,
 } from '@/components/ui/table';
 import { Empty } from '@/components/ui/empty';
 import { Alert } from '@/components/ui/alert';
@@ -44,9 +46,15 @@ const DEFAULT_HORIZON = 90;
 export function ExpiringLotsPanel() {
   const [withinDays, setWithinDays] = useState(DEFAULT_HORIZON);
   const [page, setPage] = useState(1);
+  const [sort, setSort] = useState<SortState>({ field: 'expiryDate', dir: 'asc' });
+
+  function changeSort(next: SortState) {
+    setSort(next);
+    setPage(1);
+  }
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
-  const { data, isLoading, isError } = useExpiringLots(withinDays, page, PAGE_SIZE);
+  const { data, isLoading, isError } = useExpiringLots(withinDays, page, PAGE_SIZE, sort.field, sort.dir);
   const lots = data?.items ?? [];
   const meta = data?.meta;
 
@@ -85,10 +93,16 @@ export function ExpiringLotsPanel() {
         <TableHeader>
           <TableRow>
             <TableHead>Məhsul</TableHead>
-            <TableHead>Partiya</TableHead>
+            <SortableTableHead field="lotNumber" sort={sort} onSortChange={changeSort}>
+              Partiya
+            </SortableTableHead>
             <TableHead>Yer</TableHead>
-            <TableHead className="r">Qalıq</TableHead>
-            <TableHead>Bitir</TableHead>
+            <SortableTableHead field="quantity" sort={sort} onSortChange={changeSort} className="r">
+              Qalıq
+            </SortableTableHead>
+            <SortableTableHead field="expiryDate" sort={sort} onSortChange={changeSort}>
+              Bitir
+            </SortableTableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

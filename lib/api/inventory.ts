@@ -198,7 +198,13 @@ export async function getStockAlertSummary(): Promise<StockAlertSummary> {
 
 /** Products at or below their threshold, worst shortfall first. */
 export async function getLowStockItems(
-  params: { criticalOnly?: boolean; page?: number; size?: number } = {},
+  params: {
+    criticalOnly?: boolean;
+    page?: number;
+    size?: number;
+    sort?: string;
+    dir?: 'asc' | 'desc';
+  } = {},
 ): Promise<PageResponse<InventoryItem>> {
   const page = await apiGet<RawPage<InventoryItem>>('/inventory/stock-alerts', params);
   return { items: page.content, meta: page.meta };
@@ -249,7 +255,13 @@ export async function writeOffLot(lotId: string, reason?: string): Promise<void>
 }
 
 export async function getExpiringLots(
-  params: { withinDays?: number; page?: number; size?: number } = {},
+  params: {
+    withinDays?: number;
+    page?: number;
+    size?: number;
+    sort?: string;
+    dir?: 'asc' | 'desc';
+  } = {},
 ): Promise<PageResponse<InventoryLot>> {
   const page = await apiGet<RawPage<InventoryLot>>('/inventory/lots/expiring', params);
   return { items: page.content, meta: page.meta };
