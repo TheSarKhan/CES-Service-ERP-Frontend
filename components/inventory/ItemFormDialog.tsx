@@ -14,8 +14,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import { PackageMinus, ShieldCheck } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, PackageMinus, ShieldCheck } from 'lucide-react';
 import { Label, Field, FieldError, FieldHint } from '@/components/ui/label';
 import { Alert } from '@/components/ui/alert';
 import { DynamicFieldInput } from '@/components/inventory/DynamicFieldInput';
@@ -27,6 +26,7 @@ import {
 import { ApiRequestError } from '@/lib/api/client';
 import { UNIT_OPTIONS } from '@/lib/constants/units';
 import { ApprovalSubmittedDialog } from '@/components/approval/ApprovalSubmittedDialog';
+import { cn } from '@/lib/utils';
 import type { InventoryItem } from '@/types/inventory';
 
 const itemFormSchema = z.object({
@@ -64,6 +64,44 @@ const itemFormSchema = z.object({
 
 type ItemFormValues = z.infer<typeof itemFormSchema>;
 
+type StepKey = 'basics' | 'stock' | 'fields' | 'extra';
+
+/**
+ * The create flow, in the order the answers actually arrive.
+ *
+ * Required first, optional last: everything through "Stok" has to be filled for the product to
+ * exist at all, so a step that fails validation fails early rather than after twenty fields. The
+ * dynamic-field step disappears entirely for a category that defines none — an empty screen
+ * between two full ones reads like something failed to load.
+ */
+const STEP_META: Record<StepKey, { label: string; hint: string }> = {
+  basics: { label: 'Əsas', hint: 'Məhsul nədir və necə tanınır' },
+  stock: { label: 'Stok', hint: 'Nə qədər var və necə izlənir' },
+  fields: { label: 'Sahələr', hint: 'Kateqoriyanın öz sahələri' },
+  extra: { label: 'Əlavə', hint: 'Zəmanət, təchizatçı, qeyd — hamısı könüllü' },
+};
+
+/**
+ * How a product's quantity is known. Exactly one applies — the truth about how much there is has
+ * to live in one place — so these are radios, not the two checkboxes they used to be, where
+ * "neither" and "both" were states the form could express but the domain could not.
+ */
+const TRACKING_MODES = [
+  { value: 'PLAIN', label: 'Adi', hint: 'Sadəcə miqdar' },
+  { value: 'SERIAL', label: 'Seriyalı', hint: 'Hər ədədin öz nömrəsi' },
+  { value: 'LOT', label: 'Partiyalı', hint: 'Son istifadə tarixi ilə' },
+] as const;
+
+type TrackingMode = (typeof TRACKING_MODES)[number]['value'];
+
+/** Which values each step owns, so "İrəli" only validates what is on screen. */
+const STEP_FIELDS: Record<StepKey, (keyof ItemFormValues)[]> = {
+  basics: ['categoryId', 'name', 'sku', 'barcode', 'unit', 'purchasePrice'],
+  stock: ['quantity', 'minQuantity', 'criticalQuantity', 'expiryWarningDays'],
+  fields: [],
+  extra: ['warrantyMonths', 'warrantyStartDate', 'warrantyEndDate', 'supplier', 'notes'],
+};
+
 export interface ItemFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -72,6 +110,45 @@ export interface ItemFormDialogProps {
   editingItem?: InventoryItem | null;
   /** Pre-selects the category when opened from a specific category section (create only). */
   initialCategoryId?: string;
+}
+
+/**
+ * Where you are and how much is left.
+ *
+ * Steps already passed stay legible rather than greying out — they are still reachable with "Geri",
+ * and dimming them would suggest otherwise.
+ */
+function StepIndicator({ steps, current }: { steps: StepKey[]; current: number }) {
+  return (
+    <div className="mb-5">
+      <div className="flex items-center gap-2">
+        {steps.map((key, index) => (
+          <div key={key} className="flex flex-1 items-center gap-2">
+            <div
+              className={cn(
+                'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors',
+                index < current && 'bg-ok/15 text-ok',
+                index === current && 'bg-gold text-white',
+                index > current && 'bg-graphite-50 text-muted-foreground',
+              )}
+            >
+              {index < current ? <Check className="h-3.5 w-3.5" /> : index + 1}
+            </div>
+            <span
+              className={cn(
+                'truncate text-sm',
+                index === current ? 'font-bold' : 'text-muted-foreground',
+              )}
+            >
+              {STEP_META[key].label}
+            </span>
+            {index < steps.length - 1 && <div className="h-px flex-1 bg-line" />}
+          </div>
+        ))}
+      </div>
+      <p className="mt-2 text-xs text-muted-foreground">{STEP_META[steps[current]].hint}</p>
+    </div>
+  );
 }
 
 export function ItemFormDialog({
@@ -85,7 +162,12 @@ export function ItemFormDialog({
   const [approvalSent, setApprovalSent] = useState(false);
   const [attributes, setAttributes] = useState<Record<string, unknown>>({});
   const [attributeErrors, setAttributeErrors] = useState<string[]>([]);
+  const [step, setStep] = useState(0);
   const isEditing = Boolean(editingItem);
+  // Editing stays a single form. A wizard is right when you are answering questions for the first
+  // time and wrong when you came to fix one typo and would have to walk past three screens to
+  // reach it.
+  const isWizard = !isEditing;
 
   const { data: categories } = useInventoryCategories();
   const createItem = useCreateInventoryItem();
@@ -96,6 +178,8 @@ export function ItemFormDialog({
     handleSubmit,
     watch,
     reset,
+    trigger,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<ItemFormValues>({
     resolver: zodResolver(itemFormSchema),
@@ -126,10 +210,40 @@ export function ItemFormDialog({
     [categories, selectedCategoryId],
   );
 
+  const visibleFields = useMemo(
+    () => (selectedCategory?.fields ?? []).filter((f) => f.isVisible),
+    [selectedCategory],
+  );
+
+  const steps: StepKey[] = useMemo(
+    () =>
+      (['basics', 'stock', 'fields', 'extra'] as StepKey[]).filter(
+        (key) => key !== 'fields' || visibleFields.length > 0,
+      ),
+    [visibleFields.length],
+  );
+
+  const currentStep = steps[Math.min(step, steps.length - 1)];
+  const isLastStep = step >= steps.length - 1;
+  /** Editing shows every section at once; creating shows one step at a time. */
+  const show = (key: StepKey) => !isWizard || currentStep === key;
+
+
   const watchIsSerialized = watch('isSerialized');
   // A product is serialized, batch-tracked or plain — never two at once, because the truth about
   // its quantity has to live in exactly one place.
   const watchIsLotTracked = watch('isLotTracked');
+const trackingMode: TrackingMode = watchIsSerialized
+    ? 'SERIAL'
+    : watchIsLotTracked
+      ? 'LOT'
+      : 'PLAIN';
+
+  function pickTrackingMode(mode: TrackingMode) {
+    setValue('isSerialized', mode === 'SERIAL');
+    setValue('isLotTracked', mode === 'LOT');
+  }
+
   const currentUnit = watch('unit');
   const unitOptions = useMemo(
     () => (currentUnit && !UNIT_OPTIONS.includes(currentUnit) ? [currentUnit, ...UNIT_OPTIONS] : UNIT_OPTIONS),
@@ -140,6 +254,7 @@ export function ItemFormDialog({
     if (!open) return;
     setServerError(null);
     setAttributeErrors([]);
+    setStep(0);
     if (editingItem) {
       reset({
         categoryId: editingItem.categoryId,
@@ -186,14 +301,53 @@ export function ItemFormDialog({
     }
   }, [open, editingItem, initialCategoryId, categories, reset]);
 
+  /** Required category fields that are still empty, by label. */
+  function missingAttributes(): string[] {
+    return (selectedCategory?.fields ?? [])
+      .filter(
+        (f) =>
+          f.isRequired &&
+          (attributes[f.fieldKey] === undefined ||
+            attributes[f.fieldKey] === null ||
+            attributes[f.fieldKey] === ''),
+      )
+      .map((f) => f.label);
+  }
+
+  async function goNext() {
+    const fields = STEP_FIELDS[currentStep];
+    if (fields.length > 0 && !(await trigger(fields))) return;
+    if (currentStep === 'fields') {
+      const missing = missingAttributes();
+      setAttributeErrors(missing);
+      if (missing.length > 0) return;
+    }
+    setServerError(null);
+    setStep((s) => s + 1);
+  }
+
+  /**
+   * Enter inside a field would otherwise submit a half-filled product from step one, so on every
+   * step but the last it advances instead.
+   */
+  function handleFormSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (isWizard && !isLastStep) {
+      void goNext();
+      return;
+    }
+    void handleSubmit(onSubmit)();
+  }
+
   const onSubmit = async (values: ItemFormValues) => {
     setServerError(null);
 
-    const missing = (selectedCategory?.fields ?? [])
-      .filter((f) => f.isRequired && (attributes[f.fieldKey] === undefined || attributes[f.fieldKey] === null || attributes[f.fieldKey] === ''))
-      .map((f) => f.label);
+    const missing = missingAttributes();
     if (missing.length > 0) {
       setAttributeErrors(missing);
+      // Send the user back to the step that owns the empty fields rather than reporting them from
+      // a screen where they cannot be filled in.
+      if (isWizard) setStep(steps.indexOf('fields'));
       return;
     }
     setAttributeErrors([]);
@@ -267,7 +421,10 @@ export function ItemFormDialog({
           </div>
         )}
 
-        <form onSubmit={handleSubmit(onSubmit)} noValidate>
+        <form onSubmit={handleFormSubmit} noValidate>
+          {isWizard && <StepIndicator steps={steps} current={step} />}
+
+          {show('basics') && (
           <div className="grid grid-cols-2 gap-4">
             <Field>
               <Label htmlFor="item-category" required>
@@ -337,6 +494,12 @@ export function ItemFormDialog({
               {errors.purchasePrice && <FieldError>{errors.purchasePrice.message}</FieldError>}
             </Field>
 
+          </div>
+          )}
+
+          {show('stock') && (
+          <>
+          <div className="grid grid-cols-2 gap-4">
             <Field>
               <Label htmlFor="item-qty" required>
                 Miqdar (başlanğıc)
@@ -357,72 +520,45 @@ export function ItemFormDialog({
                 )
               )}
             </Field>
-            <Field className="flex items-end pb-2">
-              <Checkbox
-                disabled={isEditing || watchIsLotTracked}
-                {...register('isSerialized')}
-              >
-                Seriya nömrəli / zəmanətli (fərdi vahidlər)
-              </Checkbox>
-              <Checkbox
-                className="mt-2"
-                disabled={isEditing || watchIsSerialized}
-                {...register('isLotTracked')}
-              >
-                Partiya (lot) izlənir — son istifadə tarixi ilə
-              </Checkbox>
-            </Field>
           </div>
 
-          {/* Warranty means two different things depending on the item, so the copy changes with
-              it: on a serialized item the months are only a default for its units, which each
-              carry their own dates. */}
-          <div className="mt-2 rounded-lg border border-line p-3">
-            <div className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-              <ShieldCheck className="h-3.5 w-3.5 text-gold" />
-              Zəmanət
+          <Field>
+            <Label required>İzləmə üsulu</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {TRACKING_MODES.map((mode) => (
+                <label
+                  key={mode.value}
+                  className={cn(
+                    'rounded-lg border px-3 py-2.5 transition-colors',
+                    trackingMode === mode.value
+                      ? 'border-gold bg-gold/5'
+                      : 'border-line hover:bg-graphite-50',
+                    // Changing it later would orphan the units or batches already recorded, so it
+                    // is decided once, when the product is created.
+                    isEditing ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="tracking-mode"
+                      className="chk"
+                      value={mode.value}
+                      checked={trackingMode === mode.value}
+                      disabled={isEditing}
+                      onChange={() => pickTrackingMode(mode.value)}
+                    />
+                    {/* Never wraps: three labels breaking onto three lines each turned this row
+                        into a wall of text. */}
+                    <span className="whitespace-nowrap text-sm font-semibold">{mode.label}</span>
+                  </span>
+                  <span className="mt-0.5 block whitespace-nowrap text-xs text-muted-foreground">
+                    {mode.hint}
+                  </span>
+                </label>
+              ))}
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <Field className="mb-0">
-                <Label htmlFor="item-warranty-months">Müddət (ay)</Label>
-                <Input
-                  id="item-warranty-months"
-                  type="number"
-                  min="0"
-                  placeholder="12"
-                  error={Boolean(errors.warrantyMonths)}
-                  {...register('warrantyMonths')}
-                />
-                {errors.warrantyMonths ? (
-                  <FieldError>{errors.warrantyMonths.message}</FieldError>
-                ) : (
-                  <FieldHint>
-                    {watchIsSerialized
-                      ? 'Yeni seriya nömrəsi qeydə alınanda zəmanət bu müddətdən hesablanacaq.'
-                      : 'Başlanğıc tarixdən etibarən. Bitmə tarixi boşdursa buradan hesablanır.'}
-                  </FieldHint>
-                )}
-              </Field>
-              <Field className="mb-0">
-                <Label htmlFor="item-warranty-start">Başlanğıc tarixi</Label>
-                <Input id="item-warranty-start" type="date" {...register('warrantyStartDate')} />
-              </Field>
-              {!watchIsSerialized && (
-                <Field className="mb-0">
-                  <Label htmlFor="item-warranty-end">Bitmə tarixi</Label>
-                  <Input id="item-warranty-end" type="date" {...register('warrantyEndDate')} />
-                  <FieldHint>Yazılsa, müddətdən hesablanan tarixi əvəz edir.</FieldHint>
-                </Field>
-              )}
-            </div>
-            {watchIsSerialized && (
-              <p className="mt-2 text-xs text-muted-foreground">
-                Seriyalı məhsulda zəmanət hər vahidin üzərindədir — bitmə tarixi vahid səviyyəsində
-                saxlanılır və ayrıca dəyişdirilə bilər.
-              </p>
-            )}
-
-          </div>
+          </Field>
 
           {watchIsLotTracked && (
             <Field className="mt-2">
@@ -484,6 +620,60 @@ export function ItemFormDialog({
               </Field>
             </div>
           </div>
+          </>
+          )}
+
+          {show('extra') && (
+          <>
+          {/* Warranty means two different things depending on the item, so the copy changes with
+              it: on a serialized item the months are only a default for its units, which each
+              carry their own dates. */}
+          <div className="mt-2 rounded-lg border border-line p-3">
+            <div className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+              <ShieldCheck className="h-3.5 w-3.5 text-gold" />
+              Zəmanət
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Field className="mb-0">
+                <Label htmlFor="item-warranty-months">Müddət (ay)</Label>
+                <Input
+                  id="item-warranty-months"
+                  type="number"
+                  min="0"
+                  placeholder="12"
+                  error={Boolean(errors.warrantyMonths)}
+                  {...register('warrantyMonths')}
+                />
+                {errors.warrantyMonths ? (
+                  <FieldError>{errors.warrantyMonths.message}</FieldError>
+                ) : (
+                  <FieldHint>
+                    {watchIsSerialized
+                      ? 'Yeni seriya nömrəsi qeydə alınanda zəmanət bu müddətdən hesablanacaq.'
+                      : 'Başlanğıc tarixdən etibarən. Bitmə tarixi boşdursa buradan hesablanır.'}
+                  </FieldHint>
+                )}
+              </Field>
+              <Field className="mb-0">
+                <Label htmlFor="item-warranty-start">Başlanğıc tarixi</Label>
+                <Input id="item-warranty-start" type="date" {...register('warrantyStartDate')} />
+              </Field>
+              {!watchIsSerialized && (
+                <Field className="mb-0">
+                  <Label htmlFor="item-warranty-end">Bitmə tarixi</Label>
+                  <Input id="item-warranty-end" type="date" {...register('warrantyEndDate')} />
+                  <FieldHint>Yazılsa, müddətdən hesablanan tarixi əvəz edir.</FieldHint>
+                </Field>
+              )}
+            </div>
+            {watchIsSerialized && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Seriyalı məhsulda zəmanət hər vahidin üzərindədir — bitmə tarixi vahid səviyyəsində
+                saxlanılır və ayrıca dəyişdirilə bilər.
+              </p>
+            )}
+
+          </div>
 
           <div className="mt-2 rounded-lg border border-line p-3">
             {/* Its own field rather than a category attribute: a warranty claim is addressed to a
@@ -499,32 +689,54 @@ export function ItemFormDialog({
             </Field>
           </div>
 
-          {selectedCategory &&
-            selectedCategory.fields!
-              .filter((f) => f.isVisible)
-              .map((field) => (
-                <Field key={field.id} className="mt-2">
-                  <Label required={field.isRequired}>{field.label}</Label>
-                  <DynamicFieldInput
-                    field={field}
-                    value={attributes[field.fieldKey]}
-                    onChange={(value) => setAttributes((prev) => ({ ...prev, [field.fieldKey]: value }))}
-                  />
-                </Field>
-              ))}
-
           <Field className="mt-2">
             <Label htmlFor="item-notes">Qeyd</Label>
             <Textarea id="item-notes" {...register('notes')} />
           </Field>
+          </>
+          )}
+
+          {show('fields') && (
+          <div>
+            {visibleFields.map((field) => (
+              <Field key={field.id} className="mt-2">
+                <Label required={field.isRequired}>{field.label}</Label>
+                <DynamicFieldInput
+                  field={field}
+                  value={attributes[field.fieldKey]}
+                  onChange={(value) => setAttributes((prev) => ({ ...prev, [field.fieldKey]: value }))}
+                />
+              </Field>
+            ))}
+          </div>
+          )}
 
           <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-              Ləğv et
-            </Button>
-            <Button type="submit" variant="primary" loading={isSubmitting}>
-              Yadda saxla
-            </Button>
+            {isWizard && step > 0 ? (
+              <Button key="back" type="button" variant="ghost" onClick={() => setStep((s) => s - 1)}>
+                <ChevronLeft className="h-4 w-4" />
+                Geri
+              </Button>
+            ) : (
+              <Button key="cancel" type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+                Ləğv et
+              </Button>
+            )}
+            {/* The keys matter. Without them React reuses one <button> for both branches and only
+                swaps its `type`, so advancing to the last step flipped the very element being
+                clicked from "button" to "submit" — and the browser then applied the default action
+                of a submit button to a click that was meant to say "next". Distinct keys force a
+                fresh node, so the in-flight click can never turn into a submit. */}
+            {isWizard && !isLastStep ? (
+              <Button key="next" type="button" variant="primary" onClick={() => void goNext()}>
+                İrəli
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            ) : (
+              <Button key="save" type="submit" variant="primary" loading={isSubmitting}>
+                Yadda saxla
+              </Button>
+            )}
           </DialogFooter>
         </form>
       </DialogContent>
