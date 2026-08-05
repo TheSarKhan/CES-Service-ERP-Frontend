@@ -15,6 +15,7 @@ import { Empty } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert } from '@/components/ui/alert';
 import { Pagination } from '@/components/ui/pagination';
+import { SortableTableHead, type SortState } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { Label, Field } from '@/components/ui/label';
 import {
@@ -581,12 +582,22 @@ export function ApprovalPanel() {
   const [tab, setTab] = useState<ApprovalStatus | 'ALL'>('PENDING');
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<ApprovalRequest | null>(null);
+  // Server-side: the queue runs to many pages, and reordering only the visible one would look
+  // like sorting without being it.
+  const [sort, setSort] = useState<SortState>({ field: 'requestedAt', dir: 'desc' });
 
   const { data, isLoading, isError } = useApprovals({
     status: tab === 'ALL' ? undefined : tab,
     page,
     size: PAGE_SIZE,
+    sort: sort.field,
+    dir: sort.dir,
   });
+
+  function changeSort(next: SortState) {
+    setSort(next);
+    setPage(1);
+  }
   const requests = data?.items ?? [];
   const meta = data?.meta;
 
@@ -647,12 +658,27 @@ export function ApprovalPanel() {
           <table className="tbl w-full">
             <thead>
               <tr>
-                <th>Obyekt</th>
-                <th>Növ</th>
-                <th>Əməliyyat</th>
+                <SortableTableHead field="entityLabel" sort={sort} onSortChange={changeSort}>
+                  Obyekt
+                </SortableTableHead>
+                <SortableTableHead field="entityType" sort={sort} onSortChange={changeSort}>
+                  Növ
+                </SortableTableHead>
+                <SortableTableHead field="operation" sort={sort} onSortChange={changeSort}>
+                  Əməliyyat
+                </SortableTableHead>
                 <th>Sorğunu açan</th>
-                <th>Tarix</th>
-                <th>Status</th>
+                <SortableTableHead
+                  field="requestedAt"
+                  sort={sort}
+                  onSortChange={changeSort}
+                  defaultDir="desc"
+                >
+                  Tarix
+                </SortableTableHead>
+                <SortableTableHead field="status" sort={sort} onSortChange={changeSort}>
+                  Status
+                </SortableTableHead>
                 <th className="r">Əməliyyat</th>
               </tr>
             </thead>

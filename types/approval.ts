@@ -50,4 +50,7 @@ export interface ApprovalListParams {
   status?: ApprovalStatus;
   page?: number;
   size?: number;
+  /** Column to order by; the server rejects anything outside its whitelist. */
+  sort?: string;
+  dir?: 'asc' | 'desc';
 }

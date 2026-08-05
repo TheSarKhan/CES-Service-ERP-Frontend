@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Columns3, FileWarning, Gavel, List, Search, Trash2 } from 'lucide-react';
 import {
+  SortableTableHead,
   Table,
   TableBody,
   TableCell,
@@ -10,6 +11,7 @@ import {
   TableHeader,
   TableRow,
   TableTools,
+  type SortState,
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -68,13 +70,22 @@ export function WarrantyClaimsPanel({
   const [view, setView] = useState<'board' | 'table'>('board');
   const [droppedStatus, setDroppedStatus] = useState<WarrantyClaimStatus | undefined>(undefined);
 
+  const [sort, setSort] = useState<SortState>({ field: 'createdAt', dir: 'desc' });
+
   const deleteClaim = useDeleteWarrantyClaim();
   const { data, isLoading, isError } = useWarrantyClaims({
     status: status || undefined,
     search: search || undefined,
     page,
     size: PAGE_SIZE,
+    sort: sort.field,
+    dir: sort.dir,
   });
+
+  function changeSort(next: SortState) {
+    setSort(next);
+    setPage(1);
+  }
 
   const claims = data?.items ?? [];
   const meta = data?.meta;
@@ -207,10 +218,28 @@ export function WarrantyClaimsPanel({
         <TableHeader>
           <TableRow>
             <TableHead>Hədəf</TableHead>
-            <TableHead>Təchizatçı</TableHead>
-            <TableHead>Göndərilib</TableHead>
-            <TableHead>Nəticə</TableHead>
-            <TableHead>Cavab tarixi</TableHead>
+            <SortableTableHead field="supplier" sort={sort} onSortChange={changeSort}>
+              Təchizatçı
+            </SortableTableHead>
+            <SortableTableHead
+              field="submittedAt"
+              sort={sort}
+              onSortChange={changeSort}
+              defaultDir="desc"
+            >
+              Göndərilib
+            </SortableTableHead>
+            <SortableTableHead field="status" sort={sort} onSortChange={changeSort}>
+              Nəticə
+            </SortableTableHead>
+            <SortableTableHead
+              field="decidedAt"
+              sort={sort}
+              onSortChange={changeSort}
+              defaultDir="desc"
+            >
+              Cavab tarixi
+            </SortableTableHead>
             <TableHead className="w-act" />
           </TableRow>
         </TableHeader>

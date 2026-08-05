@@ -18,6 +18,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert } from '@/components/ui/alert';
 import { Pagination } from '@/components/ui/pagination';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Label, Field } from '@/components/ui/label';
+import {
   ClaimStatusBadge,
   RecordTypeBadge,
   UnitStatusBadge,
@@ -73,6 +82,8 @@ const HORIZON_OPTIONS: { value: string; label: string }[] = [
 ];
 
 const SELECT_CLASS = 'h-9 rounded-lg border border-line bg-white px-2 text-sm';
+/** Same control, stacked full width inside the filter dialog rather than inline in the toolbar. */
+const DIALOG_SELECT_CLASS = 'h-10 w-full rounded-[11px] border border-line bg-white px-3 text-sm';
 
 /** How urgent the remaining time is — turns a date into something scannable. */
 function remainingLabel(record: WarrantyRecord): { text: string; className: string } {
@@ -220,69 +231,100 @@ export function WarrantySearchPanel({
         </div>
       </TableTools>
 
-      {advancedOpen && (
-        <div className="mb-3 flex flex-wrap items-end gap-2 rounded-lg border border-line bg-graphite-50 p-3">
-          <select
-            className={SELECT_CLASS}
-            value={supplier}
-            onChange={(e) => change(setSupplier)(e.target.value)}
-          >
-            <option value="">Təchizatçı: hamısı</option>
-            {(suppliers ?? []).map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
-          <select
-            className={SELECT_CLASS}
-            value={unitStatus}
-            onChange={(e) => change(setUnitStatus)(e.target.value as InventoryUnitStatus | '')}
-          >
-            {UNIT_STATUS_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <select
-            className={SELECT_CLASS}
-            value={withinDays}
-            onChange={(e) => change(setWithinDays)(e.target.value)}
-            disabled={Boolean(endFrom || endTo)}
-          >
-            {HORIZON_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-muted-foreground">Bitmə tarixi</span>
-            <Input
-              inputSize="sm"
-              type="date"
-              wrapperClassName="w-[150px]"
-              value={endFrom}
-              onChange={(e) => change(setEndFrom)(e.target.value)}
-            />
-            <span className="text-xs text-muted-foreground">—</span>
-            <Input
-              inputSize="sm"
-              type="date"
-              wrapperClassName="w-[150px]"
-              value={endTo}
-              onChange={(e) => change(setEndTo)(e.target.value)}
-            />
+      <Dialog open={advancedOpen} onOpenChange={setAdvancedOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Ətraflı filtr</DialogTitle>
+            <DialogDescription>
+              Nəticələr siz yazdıqca dəyişir — bağlamaq üçün ayrıca təsdiq lazım deyil
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <Field className="mb-0">
+              <Label>Təchizatçı</Label>
+              <select
+                className={DIALOG_SELECT_CLASS}
+                value={supplier}
+                onChange={(e) => change(setSupplier)(e.target.value)}
+              >
+                <option value="">Hamısı</option>
+                {(suppliers ?? []).map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            <Field className="mb-0">
+              <Label>Vahid statusu</Label>
+              <select
+                className={DIALOG_SELECT_CLASS}
+                value={unitStatus}
+                onChange={(e) => change(setUnitStatus)(e.target.value as InventoryUnitStatus | '')}
+              >
+                {UNIT_STATUS_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              {/* A unit status only exists on units, so choosing one silently drops product rows. */}
+              {unitStatus && recordType === 'ITEM' && (
+                <span className="mt-1 block text-xs text-danger">
+                  Vahid statusu seçilib — adi məhsullar nəticəyə düşməyəcək.
+                </span>
+              )}
+            </Field>
+
+            <Field className="mb-0">
+              <Label>Bitmə üfüqü</Label>
+              <select
+                className={DIALOG_SELECT_CLASS}
+                value={withinDays}
+                onChange={(e) => change(setWithinDays)(e.target.value)}
+                disabled={Boolean(endFrom || endTo)}
+              >
+                {HORIZON_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            <Field className="mb-0">
+              <Label>Bitmə tarixi aralığı</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="date"
+                  value={endFrom}
+                  onChange={(e) => change(setEndFrom)(e.target.value)}
+                />
+                <span className="text-muted-foreground">—</span>
+                <Input
+                  type="date"
+                  value={endTo}
+                  onChange={(e) => change(setEndTo)(e.target.value)}
+                />
+              </div>
+            </Field>
           </div>
-          {/* A unit status only exists on units, so choosing one silently drops product rows. */}
-          {unitStatus && recordType === 'ITEM' && (
-            <span className="text-xs text-danger">
-              Vahid statusu seçilib — adi məhsullar nəticəyə düşməyəcək.
-            </span>
-          )}
-        </div>
-      )}
+
+          <DialogFooter>
+            {filterCount > 0 && (
+              <Button variant="ghost" onClick={clearFilters}>
+                <X className="h-4 w-4" />
+                Təmizlə ({filterCount})
+              </Button>
+            )}
+            <Button variant="primary" onClick={() => setAdvancedOpen(false)}>
+              Bağla
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {isError && (
         <Alert variant="danger" title="Yüklənmədi">

@@ -331,6 +331,8 @@ export interface StockMovementParams {
   type?: StockMovementType;
   page?: number;
   size?: number;
+  sort?: string;
+  dir?: 'asc' | 'desc';
 }
 
 /** Target of a warranty extension — a whole product, or one serialized unit of it. */
@@ -472,4 +474,7 @@ export interface WarrantyClaimListParams {
   search?: string;
   page?: number;
   size?: number;
+  /** Column to order by; the server rejects anything outside its whitelist. */
+  sort?: string;
+  dir?: 'asc' | 'desc';
 }
